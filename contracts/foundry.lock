@@ -1,4 +1,13 @@
 {
+  "contracts/lib/circuits": {
+    "rev": "fef4b9485a45bbb8238364e3366150c22e3726be"
+  },
+  "contracts/lib/openzeppelin-contracts": {
+    "rev": "9cfdccd35350f7bcc585cf2ede08cd04e7f0ec10"
+  },
+  "contracts/lib/safe-smart-account": {
+    "rev": "d7de455e0103bd3b6d1d6a4075d7c36d1869d677"
+  },
   "lib/circuits": {
     "rev": "fef4b9485a45bbb8238364e3366150c22e3726be"
   },
