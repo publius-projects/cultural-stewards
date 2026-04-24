@@ -303,7 +303,7 @@ OPT_SEPOLIA_DEPLOY_ARGS := --rpc-url $(OPT_SEPOLIA_RPC_URL) --account dev_3 --se
 fork-anvil : 
 	anvil --fork-url $(OPT_SEPOLIA_RPC_URL) --block-time 1 --chain-id 31337   
 
-organisation-deploy : 
+governance-deploy : 
 	@echo "Deploying example contracts..."
 	forge script governance/Deploy.s.sol:Deploy $(SEPOLIA_DEPLOY_ARGS) 
 

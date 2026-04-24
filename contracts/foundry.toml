@@ -33,11 +33,11 @@ remappings = [
     "@zkpassport/registry-sdk/=lib/zkpassport-packages/packages/registry-sdk/",
     "@zkpassport/registry-contracts/=lib/zkpassport-packages/packages/registry-contracts/",
     "@zkpassport/circuits/=lib/circuits/src/solidity/", 
-    "@mocks/=lib/powers-mono-repo/solidity/src/test/mocks/", 
-    "@src/=lib/powers-mono-repo/solidity/src/",
+    "@mocks/=lib/powers-monorepo/solidity/src/test/mocks/", 
+    "@src/=lib/powers-monorepo/solidity/src/",
     "@lib/=lib/",
-    "@script/=lib/powers-mono-repo/solidity/script",
-    "@governance/=lib/powers-mono-repo/solidity/governance/"
+    "@script/=lib/powers-monorepo/solidity/script",
+    "@governance/=lib/powers-monorepo/solidity/governance/"
 ] 
 
 [fmt]
