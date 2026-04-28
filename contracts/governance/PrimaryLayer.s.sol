@@ -27,7 +27,7 @@ contract PrimaryLayer is DeploySetup {
     uint16 public requestAllowancePhysicalLayerId;
     uint16 public requestAllowanceDigitalLayerId;
     uint16 public mintPoapTokenId;
-    uint16 public requestParticipantshippowersId;
+    uint16 public requestParticipantpowersId;
 
     //////////////////////////////////////////////////////////////////////
     //                        INITIALISATION                            //
@@ -889,11 +889,11 @@ contract PrimaryLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2; 
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Claim Participant Primary Layer: This flow includes the claiming of Participantship in the Primary Layer based on a request from an Ideas Layer and the ownership of POAP tokens from the Physical Layer. Any Participant of an Ideas Layer can trigger this flow, but it requires the ownership of at least 2 POAP tokens from the Physical Layer that are not older than 6 months, so effectively only active Participants of the Physical Layer can claim Participantship in the Primary Layer.",
+            nameDescription: "Claim Participant Primary Layer: This flow includes the claiming of Participant in the Primary Layer based on a request from an Ideas Layer and the ownership of POAP tokens from the Physical Layer. Any Participant of an Ideas Layer can trigger this flow, but it requires the ownership of at least 2 POAP tokens from the Physical Layer that are not older than 6 months, so effectively only active Participants of the Physical Layer can claim Participant in the Primary Layer.",
             mandateIds: mandateIds
         }));
 
-        // Ideas DAO: request Participantship - statement of intent.
+        // Ideas DAO: request Participant - statement of intent.
         inputParams = new string[](1);
         inputParams[0] = "uint256[] TokenIds";
 
@@ -901,21 +901,21 @@ contract PrimaryLayer is DeploySetup {
         conditions.allowedRole = 4; // = ideas layer
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request Participantship Step 1: A forwarded quest to become Participant from an ideas-DAO",
+                nameDescription: "Request Participant Step 1: A forwarded quest to become Participant from an ideas-DAO",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode( inputParams ),
                 conditions: conditions
             })
         );
         delete conditions;
-        requestParticipantshippowersId = mandateCount;
+        requestParticipantpowersId = mandateCount;
 
         mandateCount++;
         conditions.allowedRole = type(uint256).max; // = public
         conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request Participantship Step 2: 2 POAPS from physical DAO are needed that are not older than 6 months.",
+                nameDescription: "Request Participant Step 2: 2 POAPS from physical DAO are needed that are not older than 6 months.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "GovernedToken_GatedAccess"),
                 config: abi.encode(
                     address(activityToken), // soulbound token contract
@@ -935,14 +935,14 @@ contract PrimaryLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2; 
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Revoke Participantship: This flow includes the revoking of Participantship in the Primary Layer based on a request from an Ideas Layer and the ownership of POAP tokens from the Physical Layer. Any Participant of an Ideas Layer can trigger this flow, but it requires the ownership of at least 2 POAP tokens from the Physical Layer that are not older than 6 months, so effectively only active Participants of the Physical Layer can revoke Participantship in the Primary Layer.",
+            nameDescription: "Revoke Participant: This flow includes the revoking of Participant in the Primary Layer based on a request from an Ideas Layer and the ownership of POAP tokens from the Physical Layer. Any Participant of an Ideas Layer can trigger this flow, but it requires the ownership of at least 2 POAP tokens from the Physical Layer that are not older than 6 months, so effectively only active Participants of the Physical Layer can revoke Participant in the Primary Layer.",
             mandateIds: mandateIds
         }));
 
         inputParams = new string[](1);
         inputParams[0] = "address ParticipantAddress";
 
-        // Participants: veto Revoke Participantship
+        // Participants: veto Revoke Participant
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
@@ -950,7 +950,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.quorum = 77; // = Note: high threshold.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto Revoke Participantship: Participants can veto revoking Participantship from other Participants.",
+                nameDescription: "Veto Revoke Participant: Participants can veto revoking Participant from other Participants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -958,7 +958,7 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-        // Primary Steward: Revoke Participantship
+        // Primary Steward: Revoke Participant
         mandateCount++;
         conditions.allowedRole = 2; // = Primary Steward
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
@@ -968,7 +968,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.needNotFulfilled = mandateCount - 1; // need the veto to have NOT been fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Revoke Participantship: Primary Steward can revoke Participantship from Participants.",
+                nameDescription: "Revoke Participant: Primary Steward can revoke Participant from Participants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
                 config: abi.encode(
                     address(powers), // target contract

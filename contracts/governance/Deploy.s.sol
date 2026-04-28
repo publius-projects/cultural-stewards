@@ -65,7 +65,9 @@ contract Deploy is Script {
         ideasLayerFactory.constitutePowers(
             primaryLayer.getAddress(),
             helpers.getElectionRegistry(),
-            primaryLayer.getTreasury()
+            primaryLayer.getTreasury(),
+            primaryLayer.requestParticipantpowersId(),
+            primaryLayer.requestNewPhysicalLayerId()
         );
         physicalLayerFactory.constitutePowers(
             primaryLayer.getAddress(),

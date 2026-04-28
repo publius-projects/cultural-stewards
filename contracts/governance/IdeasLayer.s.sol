@@ -20,9 +20,6 @@ contract IdeasLayer is DeploySetup {
     PowersTypes.MandateInitData[] constitution; 
     PowersFactory powersFactory;
 
-    uint16 public requestParticipantshipprimaryLayerId;
-    uint16 public requestNewPhysicalLayerId;
-
     //////////////////////////////////////////////////////////////////////
     //                        INITIALISATION                            //
     //////////////////////////////////////////////////////////////////////
@@ -48,9 +45,11 @@ contract IdeasLayer is DeploySetup {
     function constitutePowers(
         address primaryLayer,
         address electionRegistry, 
-        address safeTreasury
+        address safeTreasury,
+        uint16 requestParticipantpowersId,
+        uint16 requestNewPhysicalLayerId
     ) public {
-        _createConstitution(primaryLayer, electionRegistry, safeTreasury);
+        _createConstitution(primaryLayer, electionRegistry, safeTreasury, requestParticipantpowersId, requestNewPhysicalLayerId);
         
         PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
         vm.startBroadcast();
@@ -73,7 +72,9 @@ contract IdeasLayer is DeploySetup {
     function _createConstitution(
         address primaryLayer,
         address electionRegistry,
-        address safeTreasury
+        address safeTreasury,
+        uint16 requestParticipantpowersId,
+        uint16 requestNewPhysicalLayerId
     ) internal {
         mandateCount = 5; // resetting mandate count.
 
@@ -169,7 +170,7 @@ contract IdeasLayer is DeploySetup {
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
                 config: abi.encode( 
                     primaryLayer,
-                    uint16(requestNewPhysicalLayerId), // parent mandate id (the create new physical layer at Primary Layer mandate)
+                    requestNewPhysicalLayerId, // parent mandate id (the create new physical layer at Primary Layer mandate)
                     "Requesting creation of new Physical Layer from Primary Layer", // description
                     inputParams
                 ),
@@ -239,11 +240,11 @@ contract IdeasLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Assign Participantship: This flow allows users to apply for and claim Participant roles based on forum participation.",
+            nameDescription: "Assign Participant: This flow allows users to apply for and claim Participant roles based on forum participation.",
             mandateIds: mandateIds
         }));
 
-        // public: apply for Participantship
+        // public: apply for Participant
         inputParams = new string[](2);
         inputParams[0] = "address ApplicantAddress";
         inputParams[1] = "string ApplicationURI";
@@ -253,7 +254,7 @@ contract IdeasLayer is DeploySetup {
         conditions.throttleExecution = minutesToBlocks(10, helperConfig.getBlocksPerHour(block.chainid)); // to avoid spamming, the mandate is throttled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Apply for Participantship: Anyone can apply for Participantship to the DAO by submitting an application.",
+                nameDescription: "Apply for Participant: Anyone can apply for Participant to the DAO by submitting an application.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -261,13 +262,13 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // Assessors: assess and assign Participantship
+        // Assessors: assess and assign Participant
         mandateCount++;
         conditions.allowedRole = 3; // = Assessors
         conditions.needFulfilled = mandateCount - 1; // need the application to have been submitted.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Assess and Assign Participantship: Assessors can assess applications and assign Participantship to applicants.",
+                nameDescription: "Assess and Assign Participant: Assessors can assess applications and assign Participant to applicants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
                 config: abi.encode( 
                     address(0),
@@ -287,21 +288,21 @@ contract IdeasLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Revoke Participantship: This flow allows Participants to veto and Assessors to revoke Participantship.",
+            nameDescription: "Revoke Participant: This flow allows Participants to veto and Assessors to revoke Participant.",
             mandateIds: mandateIds
         }));
 
-        // Assessors can revoke Participantship following bad behaviour on forum etc.
-        // Participants: veto Revoke Participantship
+        // Assessors can revoke Participant following bad behaviour on forum etc.
+        // Participants: veto Revoke Participant
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
         conditions.succeedAt = 51; // = 51% majority
         conditions.quorum = 77; // = Note: high threshold.
-        conditions.needFulfilled = mandateCount - 1; // need the revoke Participantship mandate to have been fulfilled for the veto to be valid.
+        conditions.needFulfilled = mandateCount - 1; // need the revoke Participant mandate to have been fulfilled for the veto to be valid.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto Revoke Participantship: Participants can veto revoking Participantship from other Participants.",
+                nameDescription: "Veto Revoke Participant: Participants can veto revoking Participant from other Participants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -309,8 +310,8 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // Assessors: Revoke Participantship
-        // Note: even though the inputParams also have the URI included (which is not needed for revoking Participantship), we keep the same inputParams for both the assign and revoke mandate, as the excess params will simply be ignored.
+        // Assessors: Revoke Participant
+        // Note: even though the inputParams also have the URI included (which is not needed for revoking Participant), we keep the same inputParams for both the assign and revoke mandate, as the excess params will simply be ignored.
         mandateCount++;
         conditions.allowedRole = 3; // = Assessors
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
@@ -318,10 +319,10 @@ contract IdeasLayer is DeploySetup {
         conditions.quorum = 77; // = Note: high threshold.
         conditions.timelock = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 10 minutes timelock before execution.
         conditions.needNotFulfilled = mandateCount - 1; // need the veto to have NOT been fulfilled.
-        conditions.needFulfilled = mandateCount - 2; // need the revoke Participantship mandate to have been fulfilled.
+        conditions.needFulfilled = mandateCount - 2; // need the revoke Participant mandate to have been fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Revoke Participantship: Assessors can revoke Participantship from Participants.",
+                nameDescription: "Revoke Participant: Assessors can revoke Participant from Participants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
                 config: abi.encode( 
                     address(0), // target is its own powers contract
@@ -341,19 +342,19 @@ contract IdeasLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Request Participantship of Primary Layer: This flow allows Participants to apply for Participantship in the Primary Layer and Assessors to approve and forward the request.",
+            nameDescription: "Request Participant of Primary Layer: This flow allows Participants to apply for Participant in the Primary Layer and Assessors to approve and forward the request.",
             mandateIds: mandateIds
         }));
 
         inputParams = new string[](1);
         inputParams[0] = "uint256[] TokenIds";
 
-        // Participants: apply for Participantship of Primary Layer. 
+        // Participants: apply for Participant of Primary Layer. 
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Apply for Participantship of Primary Layer: Participants can apply for Participantship of the Primary Layer by submitting a request with their POAPs.",
+                nameDescription: "Apply for Participant of Primary Layer: Participants can apply for Participant of the Primary Layer by submitting a request with their POAPs.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -370,12 +371,12 @@ contract IdeasLayer is DeploySetup {
         conditions.quorum = 10; // low quorum.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request Participantship of Primary Layer: Assessors can ok requests for Participantship of the Primary Layer and send them to the Primary Layer for assessment.",
+                nameDescription: "Request Participant of Primary Layer: Assessors can ok requests for Participant of the Primary Layer and send them to the Primary Layer for assessment.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
                 config: abi.encode( 
                     primaryLayer,
-                    uint16(requestParticipantshipprimaryLayerId), // parent mandate id (the request Participantship of Primary Layer mandate)
-                    "Requesting Participantship of Primary Layer", // description
+                    requestParticipantpowersId, // parent mandate id (the request Participant of Primary Layer mandate)
+                    "Requesting Participant of Primary Layer", // description
                     inputParams
                 ),
                 conditions: conditions

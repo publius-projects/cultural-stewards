@@ -328,7 +328,7 @@ contract DigitalLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Assign Participantship: This flow allows users to apply for and claim Participant roles based on their GitHub contributions.",
+            nameDescription: "Assign Participant: This flow allows users to apply for and claim Participant roles based on their GitHub contributions.",
             mandateIds: mandateIds
         }));
 
@@ -384,14 +384,14 @@ contract DigitalLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Revoke Participantship: This flow allows Participants to veto and executives to revoke Participantship.",
+            nameDescription: "Revoke Participant: This flow allows Participants to veto and executives to revoke Participant.",
             mandateIds: mandateIds
         }));
 
         inputParams = new string[](1);
         inputParams[0] = "address ParticipantAddress";
 
-        // Participants: veto Revoke Participantship
+        // Participants: veto Revoke Participant
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
@@ -399,7 +399,7 @@ contract DigitalLayer is DeploySetup {
         conditions.quorum = 77; // = Note: high threshold.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto Revoke Participantship: Participants can veto revoking Participantship from other Participants.",
+                nameDescription: "Veto Revoke Participant: Participants can veto revoking Participant from other Participants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -407,7 +407,7 @@ contract DigitalLayer is DeploySetup {
         );
         delete conditions;
 
-        // Executives: Revoke Participantship
+        // Executives: Revoke Participant
         mandateCount++;
         conditions.allowedRole = 2; // = Executives
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
@@ -417,7 +417,7 @@ contract DigitalLayer is DeploySetup {
         conditions.needNotFulfilled = mandateCount - 1; // need the veto to have NOT been fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Revoke Participantship: Executives can revoke Participantship from Participants.",
+                nameDescription: "Revoke Participant: Executives can revoke Participant from Participants.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
                 config: abi.encode(
                     address(powers), 
