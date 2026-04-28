@@ -40,6 +40,6 @@ abstract contract DeploySetup is DeployHelpers {
     uint16 constant PATCH = 2;
     bool constant IS_STRICT = false;
 
-    uint16 constant PACKAGE_SIZE = 15; // for packaging constitution proposals into multiple mandates if they exceed the block gas limit. This is a temporary solution and should be replaced with a more robust solution before production deployment.
+    uint16 constant PACKAGE_SIZE = 7; // for packaging constitution proposals into multiple mandates if they exceed the block gas limit. This is a temporary solution and should be replaced with a more robust solution before production deployment.
 }
 

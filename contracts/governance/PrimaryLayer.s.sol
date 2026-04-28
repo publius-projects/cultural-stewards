@@ -44,7 +44,7 @@ contract PrimaryLayer is DeploySetup {
             );
         vm.stopBroadcast();
 
-        console2.log("Powers contract deployed at:", address(powers));
+        console2.log("Primary Layer deployed at:", address(powers));
 
         // setup Safe treasury.
         address[] memory owners = new address[](1);
@@ -78,12 +78,12 @@ contract PrimaryLayer is DeploySetup {
     //////////////////////////////////////////////////////////////////////
     function constitutePowers(
         address digitalSubDAO, 
-        address IdeasLayerFactory, 
-        address PhysicalLayerFactory, 
+        address ideasLayerFactory, 
+        address physicalLayerFactory, 
         address activityToken,
         address electionRegistry
         ) public { // add here dependencies. 
-        _createConstitution(digitalSubDAO, IdeasLayerFactory, PhysicalLayerFactory, activityToken, electionRegistry);
+        _createConstitution(digitalSubDAO, ideasLayerFactory, physicalLayerFactory, activityToken, electionRegistry);
          
         for (uint256 i = 0; i < constitution.length; i += PACKAGE_SIZE) {
             uint256 packageLength = constitution.length - i < PACKAGE_SIZE ? constitution.length - i : PACKAGE_SIZE;
@@ -96,7 +96,7 @@ contract PrimaryLayer is DeploySetup {
             vm.stopBroadcast();
         } 
         vm.startBroadcast();
-        powers.closeConstitute(msg.sender, flows); // set msg.sender as admin);
+        powers.closeConstitute(cedars, flows); // set msg.sender as admin);
         vm.stopBroadcast();
     }
 
@@ -116,8 +116,8 @@ contract PrimaryLayer is DeploySetup {
     //////////////////////////////////////////////////////////////////////
     function _createConstitution(
         address digitalSubDAO, 
-        address IdeasLayerFactory, 
-        address PhysicalLayerFactory, 
+        address ideasLayerFactory, 
+        address physicalLayerFactory, 
         address activityToken,
         address electionRegistry
         ) internal {
@@ -252,7 +252,7 @@ contract PrimaryLayer is DeploySetup {
                 nameDescription: "Create Ideas Layer: Execute Ideas Layer creation",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
                 config: abi.encode(
-                    address(IdeasLayerFactory), // calling the ideas factory
+                    address(ideasLayerFactory), // calling the ideas factory
                     bytes4(keccak256("createPowers()")),
                     abi.encode()  
                 ),
@@ -411,7 +411,7 @@ contract PrimaryLayer is DeploySetup {
                 nameDescription: "Create Physical Layer: Execute Physical Layer creation",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
                 config: abi.encode(
-                    address(PhysicalLayerFactory), // calling the Physical factory 
+                    address(physicalLayerFactory), // calling the Physical factory 
                     bytes4(keccak256("createPowers(address)")), // function selector for createPowers (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
                     inputParams // address as input param 
                 ),

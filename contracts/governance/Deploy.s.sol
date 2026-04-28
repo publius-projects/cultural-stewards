@@ -82,6 +82,7 @@ contract Deploy is Script {
         Soulbound1155(helpers.getMeritBadges()).transferOwnership(primaryLayer.getAddress()); 
         Governed721(helpers.getGoverned721()).transferOwnership(primaryLayer.getAddress());
         Nominees(helpers.getNominees()).transferOwnership(primaryLayer.getAddress());
+        
         vm.stopBroadcast();
 
         console2.log("Success! All contracts successfully deployed, unpacked and configured.");

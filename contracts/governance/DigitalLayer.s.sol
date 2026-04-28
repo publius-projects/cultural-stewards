@@ -31,6 +31,8 @@ contract DigitalLayer is DeploySetup {
                 helperConfig.getMaxExecutionsLength(block.chainid) // max executions length
             );
         vm.stopBroadcast();
+
+        console2.log("Digital Layer deployed at:", address(powers));
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -54,7 +56,7 @@ contract DigitalLayer is DeploySetup {
             vm.stopBroadcast();
         } 
         vm.startBroadcast();
-        powers.closeConstitute(msg.sender, flows); // set msg.sender as admin);
+        powers.closeConstitute(cedars, flows); // set msg.sender as admin);
         vm.stopBroadcast();
     }
 

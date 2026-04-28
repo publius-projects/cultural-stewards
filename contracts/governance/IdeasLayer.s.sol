@@ -20,7 +20,7 @@ contract IdeasLayer is DeploySetup {
     PowersTypes.MandateInitData[] constitution; 
     PowersFactory powersFactory;
 
-    uint16 public requestParticipantshipPrimaryLayerId;
+    uint16 public requestParticipantshipprimaryLayerId;
     uint16 public requestNewPhysicalLayerId;
 
     //////////////////////////////////////////////////////////////////////
@@ -46,16 +46,17 @@ contract IdeasLayer is DeploySetup {
     //                          CONSTITUTE                              //
     //////////////////////////////////////////////////////////////////////
     function constitutePowers(
-        address PrimaryLayer,
+        address primaryLayer,
         address electionRegistry, 
         address safeTreasury
     ) public {
-        _createConstitution(PrimaryLayer, electionRegistry, safeTreasury);
+        _createConstitution(primaryLayer, electionRegistry, safeTreasury);
         
         PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
         vm.startBroadcast();
         powersFactory.addMandates(constitutionPacked);
         powersFactory.addFlows(flows);
+        powersFactory.transferOwnership(primaryLayer);
         vm.stopBroadcast();
     }
 
@@ -70,7 +71,7 @@ contract IdeasLayer is DeploySetup {
     //                        CONSTITUTION                              //
     //////////////////////////////////////////////////////////////////////
     function _createConstitution(
-        address PrimaryLayer,
+        address primaryLayer,
         address electionRegistry,
         address safeTreasury
     ) internal {
@@ -90,7 +91,7 @@ contract IdeasLayer is DeploySetup {
         calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
         calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
-        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, PrimaryLayer); 
+        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
         calldatas[10] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use.
 
         mandateCount++;
@@ -167,8 +168,8 @@ contract IdeasLayer is DeploySetup {
                 nameDescription: "Request new Physical Layer: Stewards can create a new Physical Layer.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
                 config: abi.encode( 
-                    PrimaryLayer,
-                    requestNewPhysicalLayerId, // parent mandate id (the create new physical layer at Primary Layer mandate)
+                    primaryLayer,
+                    uint16(requestNewPhysicalLayerId), // parent mandate id (the create new physical layer at Primary Layer mandate)
                     "Requesting creation of new Physical Layer from Primary Layer", // description
                     inputParams
                 ),
@@ -372,8 +373,8 @@ contract IdeasLayer is DeploySetup {
                 nameDescription: "Request Participantship of Primary Layer: Assessors can ok requests for Participantship of the Primary Layer and send them to the Primary Layer for assessment.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
                 config: abi.encode( 
-                    PrimaryLayer,
-                    requestParticipantshipPrimaryLayerId, // parent mandate id (the request Participantship of Primary Layer mandate)
+                    primaryLayer,
+                    uint16(requestParticipantshipprimaryLayerId), // parent mandate id (the request Participantship of Primary Layer mandate)
                     "Requesting Participantship of Primary Layer", // description
                     inputParams
                 ),
@@ -565,7 +566,7 @@ contract IdeasLayer is DeploySetup {
             PowersTypes.MandateInitData({
                 nameDescription: "Clean up Steward election: After a Steward election has finished, clean up related mandates.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_CleanUpVoteMandate"),
-                config: abi.encode(mandateCount - 2), // The create vote mandate)
+                config: abi.encode(uint16(mandateCount - 2)), // The create vote mandate)
                 conditions: conditions
             })
         );
@@ -677,7 +678,7 @@ contract IdeasLayer is DeploySetup {
                     IPowers.revokeMandate.selector, // function selector to call
                     abi.encode(), // params before
                     inputParams, // dynamic params (the input params of the parent mandate)
-                    mandateCount - 2, // parent mandate id (the open vote  mandate)
+                    uint16(mandateCount - 2), // parent mandate id (the open vote  mandate)
                     abi.encode() // no params after
                 ),
                 conditions: conditions

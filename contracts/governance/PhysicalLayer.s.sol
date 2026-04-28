@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import { console2 } from "forge-std/console2.sol";
-import { DeploySetup } from "./PrimaryLayer.s.sol";
+import { DeploySetup } from "./DeploySetup.s.sol";
 import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";
 import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
 import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
@@ -45,18 +45,19 @@ contract PhysicalLayer is DeploySetup {
     //                          CONSTITUTE                              //
     //////////////////////////////////////////////////////////////////////
     function constitutePowers(
-        address PrimaryLayer,
+        address primaryLayer,
         address governed721,
         address activityToken,
         address nominees,
         uint16 mintPoapTokenId
     ) public {
-        _createConstitution(PrimaryLayer, governed721, activityToken, nominees, mintPoapTokenId);
+        _createConstitution(primaryLayer, governed721, activityToken, nominees, mintPoapTokenId);
         
         PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
         vm.startBroadcast();
         powersFactory.addMandates(constitutionPacked);
         powersFactory.addFlows(flows);
+        powersFactory.transferOwnership(primaryLayer);
         vm.stopBroadcast();
     }
 
@@ -71,7 +72,7 @@ contract PhysicalLayer is DeploySetup {
     //                        CONSTITUTION                              //
     //////////////////////////////////////////////////////////////////////
     function _createConstitution(
-        address PrimaryLayer,
+        address primaryLayer,
         address governed721,
         address activityToken,
         address nominees,
@@ -92,7 +93,7 @@ contract PhysicalLayer is DeploySetup {
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 6, "Primary Layer", "");
         calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
-        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, address(PrimaryLayer)); 
+        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
         calldatas[9] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use. 
 
         mandateCount++;
@@ -199,8 +200,8 @@ contract PhysicalLayer is DeploySetup {
                 nameDescription: "Mint POAP: Any Steward can mint a POAP.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
                 config: abi.encode(
-                    address(PrimaryLayer),
-                    mintPoapTokenId, // parent mandate id (the mint POAP token at primary DAO mandate)
+                    address(primaryLayer),
+                    uint16(mintPoapTokenId), // parent mandate id (the mint POAP token at primary DAO mandate)
                     "Requesting minting of POAP from Primary Layer",
                     inputParams
                 ),
@@ -381,8 +382,8 @@ contract PhysicalLayer is DeploySetup {
                     activityToken, // soulbound token contract
                     1, // attendee role Id
                     0, // checks if token is from address that holds role Id 0 (meaning the admin, which is the DAO itself).
-                    1, // number of tokens required. Only one POAP needed for membership.
-                    daysToBlocks(15, helperConfig.getBlocksPerHour(block.chainid)) // look back period in blocks = 15 days.
+                    uint48(daysToBlocks(15, helperConfig.getBlocksPerHour(block.chainid))), // look back period in blocks = 15 days.
+                    uint48(1) // number of tokens required. Only one POAP needed for membership.
                 ),
                 conditions: conditions
             })
@@ -417,7 +418,7 @@ contract PhysicalLayer is DeploySetup {
                     60 * 60 * 24 * 90, // the time window in which the ZKP proof needs to have been created. This is three months.
                     false, // facematch not required (for now) 
                     ZKPassportHelper.isAgeAboveOrEqual.selector,  
-                    abi.encode(18) // the input for the zkp check (age > 18) 
+                    abi.encode(uint8(18)) // the input for the zkp check (age > 18) 
                     ),
                 conditions: conditions
             })
@@ -433,8 +434,7 @@ contract PhysicalLayer is DeploySetup {
                 nameDescription: "Nominate for selection: any member can nominate to be selected for Steward role.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Nominate"),
                 config: abi.encode(
-                    nominees, // election list contract
-                    true // nominate as candidate
+                    nominees // election list contract
                 ),
                 conditions: conditions
             })
@@ -472,8 +472,8 @@ contract PhysicalLayer is DeploySetup {
                 nameDescription: "Select Stewards: Legal Interfacers can select Stewards from the pool of nominees.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "PeerSelect"),
                 config: abi.encode(
-                    3, // numberToSelect
-                    2, // RoleId for Stewards
+                    uint8(3), // numberToSelect
+                    uint256(2), // RoleId for Stewards
                     nominees // election list contract // 
                 ),
                 conditions: conditions
@@ -546,13 +546,13 @@ contract PhysicalLayer is DeploySetup {
         );
         delete conditions;
 
-        // PrimaryLayer: Veto Adopting Mandates
+        // primaryLayer: Veto Adopting Mandates
         mandateCount++;
-        conditions.allowedRole = 6; // PrimaryLayer = role 6. 
+        conditions.allowedRole = 6; // primaryLayer = role 6. 
         conditions.needFulfilled = mandateCount - 1;
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto Adopting Mandates: PrimaryLayer can veto proposals to adopt new mandates", 
+                nameDescription: "Veto Adopting Mandates: primaryLayer can veto proposals to adopt new mandates", 
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(adoptMandatesParams),
                 conditions: conditions
@@ -598,7 +598,14 @@ contract PhysicalLayer is DeploySetup {
         mandatesToPause[2] = "Mint POAP: Any Steward can mint a POAP";
         mandatesToPause[3] = "Vote on 'Merit' NFT proposals";
         mandatesToPause[4] = "Update URI";
-        (uint16[] memory indexFlows, uint16[] memory indexMandates) = findIndices(mandatesToPause, constitution, flows);
+        (uint16[] memory indexFlows16, uint16[] memory indexMandates16) = findIndices(mandatesToPause, constitution, flows);
+        
+        uint8[] memory indexFlows = new uint8[](indexFlows16.length);
+        uint8[] memory indexMandates = new uint8[](indexMandates16.length);
+        for(uint256 i = 0; i < indexFlows16.length; i++) {
+            indexFlows[i] = uint8(indexFlows16[i]);
+            indexMandates[i] = uint8(indexMandates16[i]);
+        }
 
         // Legal Interfacers: Pause Mandates
         mandateCount++;
