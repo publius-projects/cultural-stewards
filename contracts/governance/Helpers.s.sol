@@ -45,10 +45,6 @@ contract Helpers is Script {
         return address(actvityToken);
     }
 
-    function getMeritBadges() public view returns (address) {
-        return address(meritBadges);
-    }
-
     function getNominees() public view returns (address) {
         return address(nominees);
     }

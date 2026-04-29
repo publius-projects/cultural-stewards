@@ -234,7 +234,7 @@ contract IdeasLayer is DeploySetup {
         //                      ELECTORAL MANDATES                          //
         //////////////////////////////////////////////////////////////////////
 
-        // ASSIGN ParticipantSHIP //
+        // ASSIGN PARTICIPANT //
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -282,7 +282,7 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // REVOKE ParticipantSHIP //
+        // REVOKE PARTICIPANT //
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -336,7 +336,7 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // REQUEST ParticipantSHIP OF Primary Layer //
+        // REQUEST TO BECOME PARTICIPANT AT PRIMARY LAYER //
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -384,7 +384,7 @@ contract IdeasLayer is DeploySetup {
         ); 
         delete conditions;
 
-        // ASSIGN AssessorS //
+        // ASSIGN ASSESSORS //
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -436,7 +436,7 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // REVOKE AssessorS //
+        // REVOKE ASSESSORS //
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -487,12 +487,14 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // ELECT StewardS //
-        mandateIds = new uint16[](4);
+        // ELECT STEWARDS //
+        mandateIds = new uint16[](6);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
         mandateIds[2] = mandateCount + 3;
         mandateIds[3] = mandateCount + 4;
+        mandateIds[4] = mandateCount + 5;
+        mandateIds[5] = mandateCount + 6;
 
         flows.push(PowersTypes.Flow({
             nameDescription: "Elect Stewards: This flow includes the creation, voting, tallying, and cleanup of an election for Stewards.",
@@ -571,131 +573,7 @@ contract IdeasLayer is DeploySetup {
                 conditions: conditions
             })
         );
-        delete conditions;
-
-        // VOTE OF NO CONFIDENCE // 
-        mandateIds = new uint16[](5);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-        mandateIds[2] = mandateCount + 3;
-        mandateIds[3] = mandateCount + 4;
-        mandateIds[4] = mandateCount + 5;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Vote of No Confidence: This flow allows Participants to call a vote of no confidence to revoke Steward statuses and hold a new election.",
-            mandateIds: mandateIds
-        }));
-
-        // very similar to elect Stewards, but no throttle, higher threshold and ALL executives get role revoked the moment the first mandate passes.
-        inputParams = new string[](3);
-        inputParams[0] = "string Title";
-        inputParams[1] = "uint48 StartBlock";
-        inputParams[2] = "uint48 EndBlock";
-
-        // Participants: Vote of No Confidence 
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 77; // high majority
-        conditions.quorum = 60; // = high quorum 
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Vote of No Confidence: Revoke Steward statuses.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "RevokeAccountsRoleId"),
-                config: abi.encode(
-                    2, // roleId
-                    inputParams // the input params to fill out.
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: create Steward election
-        mandateCount++;
-        conditions.allowedRole = 1; // = Participants (should be Steward according to MD, but code says Participants)
-        conditions.needFulfilled = mandateCount - 1; // = previous Vote of No Confidence mandate. Note: NO throttle on this one.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Create a Steward election: an election for the Steward role can be initiated be any Participant.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
-                config: abi.encode(
-                    electionRegistry, // election list contract
-                    ElectionRegistry.createElection.selector, // selector
-                    inputParams
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: Open Vote for election
-        mandateCount++;
-        conditions.allowedRole = 1; // = Participants
-        conditions.needFulfilled = mandateCount - 1; // = Create election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Open voting for Steward election: Participants can open the vote for a Steward election. This will create a dedicated vote mandate.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_CreateVoteMandate"),
-                config: abi.encode(
-                    electionRegistry, // election list contract
-                    registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Vote"), // the vote mandate address
-                    1, // the max number of votes a voter can cast
-                    1 // the role Id allowed to vote (Participants)
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: Tally election
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.needFulfilled = mandateCount - 1; // = Open Vote election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Tally Steward elections: After a Steward election has finished, assign the Steward role to the winners.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Tally"),
-                config: abi.encode(
-                    electionRegistry,
-                    2, // RoleId for Stewards
-                    5 // Max role holders
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: clean up Steward election
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.needFulfilled = mandateCount - 1; // = Tally Steward election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Clean up Steward election: After a Steward election has finished, clean up related mandates.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_OnReturnValue"),
-                config: abi.encode( 
-                    address(0), // target is its own powers contract
-                    IPowers.revokeMandate.selector, // function selector to call
-                    abi.encode(), // params before
-                    inputParams, // dynamic params (the input params of the parent mandate)
-                    uint16(mandateCount - 2), // parent mandate id (the open vote  mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // NOMINATE FOR ELECTION //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Nominate for Election: This flow allows Participants to nominate themselves or revoke their nomination for an election.",
-            mandateIds: mandateIds
-        }));
+        delete conditions; 
 
         // Participants: Nominate for Executive election
         mandateCount++;

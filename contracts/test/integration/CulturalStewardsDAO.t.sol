@@ -68,7 +68,7 @@ pragma solidity ^0.8.26;
 //         uint96 amount;
 //         uint16 resetTime;
 //         uint32 resetBase;
-//         address digitalSubDAOAddr;
+//         address digitalLayerAddr;
 //         bytes allowanceParams;
 
 //         // New fields added during refactoring
@@ -129,7 +129,7 @@ pragma solidity ^0.8.26;
 //     Deploy deployScript;
 //     Configurations helperConfig;
 //     Powers PrimaryLayer;
-//     Powers digitalSubDAO; 
+//     Powers digitalLayer; 
 
 //     address treasury;
 //     address safeAllowanceModule;
@@ -155,8 +155,8 @@ pragma solidity ^0.8.26;
 
 //         // Identify Mandate IDs
 //         console.log("Executing Initial Setup Digital");
-//         digitalSubDAO = deployScript.getDigitalSubDAO();
-//         digitalSubDAO.request(1, "", 0, "");
+//         digitalLayer = deployScript.getDigitalSubDAO();
+//         digitalLayer.request(1, "", 0, "");
 
 //         mem.admin = PrimaryLayer.getRoleHolderAtIndex(1, 0);
 //         console.log("Setup Initiator address: %s", mem.admin);
@@ -164,9 +164,9 @@ pragma solidity ^0.8.26;
 //         treasury = PrimaryLayer.getTreasury();
 //         console.log("Treasury address: %s", treasury);
 
-//         mem.digitalSubDAOAddr = address(digitalSubDAO);
-//         vm.prank(mem.digitalSubDAOAddr);
-//         digitalSubDAO.assignRole(2, cedars); // Assign Role 2 to Cedars AT THE DIGITAL DAO. (so that cedars can act there as convener as well.)
+//         mem.digitalLayerAddr = address(digitalLayer);
+//         vm.prank(mem.digitalLayerAddr);
+//         digitalLayer.assignRole(2, cedars); // Assign Role 2 to Cedars AT THE DIGITAL DAO. (so that cedars can act there as convener as well.)
 
 //         /////////////////////////////////////////////////////////////////// 
 //         // find mandate IDs using findMandateIdInOrg function if needed  //
@@ -219,10 +219,10 @@ pragma solidity ^0.8.26;
 //         assertFalse(mem.isActive, "Mandate 1 should be revoked");
 
 //         // 9. Verify Digital Layer is Delegate
-//         mem.delegateIndex = uint48(uint160(address(digitalSubDAO)));
+//         mem.delegateIndex = uint48(uint160(address(digitalLayer)));
 
 //         (mem.delegateAddr,,) = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).delegates(treasury, mem.delegateIndex);
-//         assertEq(mem.delegateAddr, address(digitalSubDAO), "Digital Layer should be a delegate on Allowance Module");
+//         assertEq(mem.delegateAddr, address(digitalLayer), "Digital Layer should be a delegate on Allowance Module");
 //     }
 
 //     function test_adoptNewMandatesPrimaryLayer() public {
@@ -360,14 +360,14 @@ pragma solidity ^0.8.26;
 //         // --- TEST 2: Digital Layer Allowance Flow ---
 
 //         // Verify Digital Layer has delegate status (Checked in InitialSetup)
-//         mem.digitalSubDAOAddr = address(digitalSubDAO);
+//         mem.digitalLayerAddr = address(digitalLayer);
 
 //         // Params for allowance
-//         mem.allowanceParams = abi.encode(mem.digitalSubDAOAddr, mem.token, mem.amount, mem.resetTime, mem.resetBase);
+//         mem.allowanceParams = abi.encode(mem.digitalLayerAddr, mem.token, mem.amount, mem.resetTime, mem.resetBase);
 //         mem.nonce++;
 
 //         // 1. Digital Layer requests allowance
-//         vm.startPrank(mem.digitalSubDAOAddr);
+//         vm.startPrank(mem.digitalLayerAddr);
 //         console.log("Digital Layer requesting allowance...");
 //         PrimaryLayer.request(mem.requestDigitalAllowanceId, mem.allowanceParams, mem.nonce, "Digital Layer requesting allowance");
 //         vm.stopPrank();
@@ -387,7 +387,7 @@ pragma solidity ^0.8.26;
 //         vm.stopPrank();
 
 //         // Verify Allowance
-//         mem.allowanceInfo = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).getTokenAllowance(treasury, mem.digitalSubDAOAddr, mem.token);
+//         mem.allowanceInfo = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).getTokenAllowance(treasury, mem.digitalLayerAddr, mem.token);
 //         assertEq(uint96(mem.allowanceInfo[0]), mem.amount, "Digital Layer allowance should be set");
 //     }
 
@@ -401,12 +401,12 @@ pragma solidity ^0.8.26;
 //         mem.resetTime = 100;
 //         mem.resetBase = 0;
 
-//         mem.allowanceParams = abi.encode(mem.digitalSubDAOAddr, mem.token, mem.amount, mem.resetTime, mem.resetBase);
+//         mem.allowanceParams = abi.encode(mem.digitalLayerAddr, mem.token, mem.amount, mem.resetTime, mem.resetBase);
 //         mem.nonce = 100;
 
 //         // 1. Request Allowance (by Cedars - Role 5)
 //         console2.log("Digital Layer (via Cedars) requesting allowance...");
-//         vm.startPrank(mem.digitalSubDAOAddr);
+//         vm.startPrank(mem.digitalLayerAddr);
 //         PrimaryLayer.request(mem.requestDigitalAllowanceId, mem.allowanceParams, mem.nonce, "");
 //         vm.stopPrank();
 
@@ -424,7 +424,7 @@ pragma solidity ^0.8.26;
 //         vm.stopPrank();
 
 //         // Verify Allowance
-//         mem.allowanceInfo = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).getTokenAllowance(treasury, mem.digitalSubDAOAddr, mem.token);
+//         mem.allowanceInfo = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).getTokenAllowance(treasury, mem.digitalLayerAddr, mem.token);
 //         assertEq(uint96(mem.allowanceInfo[0]), mem.amount, "Digital Layer allowance should be set");
 
 //         // Fund Treasury
@@ -449,8 +449,8 @@ pragma solidity ^0.8.26;
 //         console.log("Submitting receipt...");
 //         // Propose
 //         mem.nonce++;
-//         mem.submitReceiptId = findMandateIdInOrg("Submit a Receipt: Anyone can submit a receipt for payment reimbursement.", digitalSubDAO);
-//         digitalSubDAO.request(mem.submitReceiptId, mem.paymentParams, mem.nonce, "");
+//         mem.submitReceiptId = findMandateIdInOrg("Submit a Receipt: Anyone can submit a receipt for payment reimbursement.", digitalLayer);
+//         digitalLayer.request(mem.submitReceiptId, mem.paymentParams, mem.nonce, "");
 //         vm.stopPrank();
 
 //         vm.roll(block.number + 1); // Advance block to avoid same-block issues
@@ -460,35 +460,35 @@ pragma solidity ^0.8.26;
 //         vm.startPrank(cedars);
 //         console.log("OK'ing receipt...");
 //         // Request (Condition: Role 2. No voting period set).
-//         mem.okReceiptId = findMandateIdInOrg("OK a receipt: Any convener can ok a receipt for payment reimbursement.", digitalSubDAO);
-//         digitalSubDAO.request(mem.okReceiptId, mem.paymentParams, mem.nonce, "");
+//         mem.okReceiptId = findMandateIdInOrg("OK a receipt: Any convener can ok a receipt for payment reimbursement.", digitalLayer);
+//         digitalLayer.request(mem.okReceiptId, mem.paymentParams, mem.nonce, "");
 //         vm.stopPrank();
 
 //         // Step 3: Approve Payment (Conveners)
 //         vm.startPrank(cedars);
 //         console.log("Approving payment...");
-//         mem.approvePaymentId = findMandateIdInOrg("Approve payment of receipt: Execute a transaction from the Safe Treasury.", digitalSubDAO);
-//         mem.actionId = digitalSubDAO.propose(mem.approvePaymentId, mem.paymentParams, mem.nonce, "");
+//         mem.approvePaymentId = findMandateIdInOrg("Approve payment of receipt: Execute a transaction from the Safe Treasury.", digitalLayer);
+//         mem.actionId = digitalLayer.propose(mem.approvePaymentId, mem.paymentParams, mem.nonce, "");
 
 //         // Vote (Quorum 50%, SucceedAt 67%)
 //         // Cedars is likely the only role holder?
 //         // In Mandate 1, only Cedars is assigned Role 2.
 //         // So 1 vote should be 100%.
-//         digitalSubDAO.castVote(mem.actionId, 1);
+//         digitalLayer.castVote(mem.actionId, 1);
 
 //         // Wait voting period (5 mins)
-//         votingPeriod = digitalSubDAO.getConditions(mem.approvePaymentId).votingPeriod;
+//         votingPeriod = digitalLayer.getConditions(mem.approvePaymentId).votingPeriod;
 //         vm.roll(block.number + votingPeriod + 1);
 
 //         // Execute
-//         digitalSubDAO.request(mem.approvePaymentId, mem.paymentParams, mem.nonce, "");
+//         digitalLayer.request(mem.approvePaymentId, mem.paymentParams, mem.nonce, "");
 //         vm.stopPrank();
 
 //         // Verify Payment
 //         assertEq(mem.recipient.balance, mem.paymentAmount, "Recipient should have received payment");
 
 //         // Verify Allowance Spent
-//         mem.allowanceInfo = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).getTokenAllowance(treasury, mem.digitalSubDAOAddr, mem.token);
+//         mem.allowanceInfo = IAllowanceModule(helperConfig.getSafeAllowanceModule(block.chainid)).getTokenAllowance(treasury, mem.digitalLayerAddr, mem.token);
 //         assertEq(uint96(mem.allowanceInfo[1]), mem.paymentAmount, "Allowance spent should match payment");
 //     }
 

@@ -29,7 +29,7 @@ import { PhysicalLayer } from "./PhysicalLayer.s.sol";
 /// Note: all days are turned into minutes for testing purposes. These should be changed before production deployment: ctrl-f minutesToBlocks -> daysToBlocks.
 contract Deploy is Script {
     PrimaryLayer primaryLayer;
-    DigitalLayer digitalSubDAO;
+    DigitalLayer digitalLayer;
     IdeasLayer ideasLayerFactory;
     PhysicalLayer physicalLayerFactory;
     Helpers helpers; 
@@ -37,29 +37,29 @@ contract Deploy is Script {
     function run() external { 
         // step 0, setup. 
         primaryLayer = new PrimaryLayer();
-        digitalSubDAO = new DigitalLayer();
+        digitalLayer = new DigitalLayer();
         ideasLayerFactory = new IdeasLayer();
         physicalLayerFactory = new PhysicalLayer();
         helpers = new Helpers();
 
         // deploying the core Powers and Powers factory instances: 
         primaryLayer.run();
-        digitalSubDAO.run();
+        digitalLayer.run();
         ideasLayerFactory.run();
         physicalLayerFactory.run();
         helpers.run();
 
         // constituting the powers instances and powers factories. 
         primaryLayer.constitutePowers(
-            digitalSubDAO.getAddress(),
+            digitalLayer.getAddress(),
             ideasLayerFactory.getAddress(),
             physicalLayerFactory.getAddress(),
             helpers.getActivityToken(),
             helpers.getElectionRegistry()
         );
-        digitalSubDAO.constitutePowers(
+        digitalLayer.constitutePowers(
             primaryLayer.getAddress(),
-            helpers.getActivityToken(),
+            helpers.getElectionRegistry(),
             primaryLayer.requestAllowanceDigitalLayerId()
         );
         ideasLayerFactory.constitutePowers(
@@ -74,14 +74,15 @@ contract Deploy is Script {
             helpers.getGoverned721(),
             helpers.getActivityToken(),
             helpers.getNominees(),
-            primaryLayer.mintPoapTokenId()
+            primaryLayer.mintPoapTokenId(),
+            primaryLayer.requestAllowancePhysicalLayerId()
+
         );
 
         // step 5: transfer ownership of factories to primary DAO.
         vm.startBroadcast();
         console2.log("Transferring ownership of DAO factories to Primary Layer...");
         Soulbound1155(helpers.getActivityToken()).transferOwnership(primaryLayer.getAddress());
-        Soulbound1155(helpers.getMeritBadges()).transferOwnership(primaryLayer.getAddress()); 
         Governed721(helpers.getGoverned721()).transferOwnership(primaryLayer.getAddress());
         Nominees(helpers.getNominees()).transferOwnership(primaryLayer.getAddress());
         

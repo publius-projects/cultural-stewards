@@ -49,9 +49,10 @@ contract PhysicalLayer is DeploySetup {
         address governed721,
         address activityToken,
         address nominees,
-        uint16 mintPoapTokenId
+        uint16 mintPoapTokenId,
+        uint16 requestAllowancePhysicalLayerId
     ) public {
-        _createConstitution(primaryLayer, governed721, activityToken, nominees, mintPoapTokenId);
+        _createConstitution(primaryLayer, governed721, activityToken, nominees, mintPoapTokenId, requestAllowancePhysicalLayerId);
         
         PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
         vm.startBroadcast();
@@ -76,7 +77,8 @@ contract PhysicalLayer is DeploySetup {
         address governed721,
         address activityToken,
         address nominees,
-        uint16 mintPoapTokenId
+        uint16 mintPoapTokenId, 
+        uint16 requestAllowancePhysicalLayerId
     ) internal {
         mandateCount = 3; // resetting mandate count. 
         //////////////////////////////////////////////////////////////////////
@@ -148,6 +150,58 @@ contract PhysicalLayer is DeploySetup {
         ); 
         delete conditions;
 
+        // REQUEST ALLOWANCES FROM PRIME DAO //
+        mandateIds = new uint16[](2);
+        mandateIds[0] = mandateCount + 1;
+        mandateIds[1] = mandateCount + 2;
+
+        flows.push(PowersTypes.Flow({
+            nameDescription: "Request Allowances from Primary Layer: This flow includes the veto and request of allowances from the Primary Layer.",
+            mandateIds: mandateIds
+        }));
+
+        inputParams = new string[](5);
+        inputParams[0] = "address Sub-DAO";
+        inputParams[1] = "address Token";
+        inputParams[2] = "uint96 allowanceAmount";
+        inputParams[3] = "uint16 resetTimeMin";
+        inputParams[4] = "uint32 resetBaseMin";
+ 
+        // Stewards: Veto request allowance from Primary Layer
+        mandateCount++;
+        conditions.allowedRole = 2; // Steward 
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Veto request allowance: Stewards can veto a request for additional allowance", //
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                config: abi.encode(inputParams),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // Legal Interfacer: Request allowance from Primary Layer
+        mandateCount++;
+        conditions.allowedRole = 3; // Legal Interfacer 
+        conditions.needNotFulfilled = mandateCount - 1;
+        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid));
+        conditions.succeedAt = 66;
+        conditions.quorum = 80;
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Request allowance: Repository admins can request an allowance from the Primary Layer Safe Treasury.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
+                config: abi.encode(
+                    address(primaryLayer), // target contract
+                    requestAllowancePhysicalLayerId, // parent mandate id (the request allowance at primary DAO mandate)
+                    "Requesting allowance from Primary Layer Safe Treasury",
+                    inputParams // dynamic params (the input params of the parent mandate)
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
         // PAYMENT OF RECEIPTS //
         mandateIds = new uint16[](1);
         mandateIds[0] = mandateCount + 1;
@@ -209,104 +263,6 @@ contract PhysicalLayer is DeploySetup {
             })
         );
         delete conditions;
-
-        // MINT & DISTRIBUTE 'MERIT' NFTS TO ATTENDEES THROUGH VOTING ON CONTRIBUTIONS //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Mint 'Merit' NFTs: This flow allows Stewards to propose and Attendees to vote on minting 'Merit' NFTs for attendees.",
-            mandateIds: mandateIds
-        }));
-
-        inputParams = new string[](1);
-        inputParams[0] = "address Attendee"; // attendee being considered
-
-        // Steward: proposes minting of 'Merit' NFTs to attendees based on their contributions (e.g. participation in events, volunteering, etc.).
-        mandateCount++;
-        conditions.allowedRole = 2; // = Stewards
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Propose minting 'Merit' NFTs for attendees: Stewards can propose minting 'Merit' NFTs to recognize attendees' contributions.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
-                config: abi.encode(inputParams), // input params can include details about the proposal, such as the criteria for awarding 'Merit' NFTs and the attendees being considered.
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        ///////////////////////////////////////// IMPORTANT NOTE /////////////////////////////////////////
-        // NB, TODO: The problem of deploying bespoke merit tokens should be solved through a single 1155 token contract. Encoding the address where they are minted. 
-        ///////////////////////////////////////// IMPORTANT NOTE /////////////////////////////////////////
-        
-        // Attendees: vote on the proposal to mint 'Merit' NFTs. If the proposal passes, the specified attendees receive their 'Merit' NFTs as recognition for their contributions.
-        mandateCount++;
-        conditions.allowedRole = 1; // = Attendees
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 51; // = 51% majority
-        conditions.quorum = 77; // = Note: high threshold to ensure active participation in the voting process.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Vote on 'Merit' NFT proposals: Attendees can vote on proposals to mint 'Merit' NFTs. If a proposal passes, the specified attendees receive their 'Merit' NFTs.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
-                config: abi.encode(
-                    createPlaceholderAddress("Dependency0"), // the actvityToken contract where 'Merit' NFTs are minted
-                    bytes4(keccak256("mint(address,uint256)")), // Soulbound1155.mint.selector, // function selector to call
-                    abi.encode(), // params before (role id 1 = Attendees) // the static params
-                    inputParams, // the dynamic params (== address to)
-                    abi.encode(block.number, address(0)) // We simply mint the id of the block number of the mint, the address input is that of artist, here not used.  
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // The following to mandates I still have to think through. Don't know if they are a good idea. 
-        // I do think the Artist one is a nice example of voting on range fo actions. A common use case and not implemented yet. 
-        // MINT & DISTRIBUTE 'MERIT' NFTS TO ARTIST THROUGH VOTING ON ART WORKS //
-        // £TODO - implement? 
-
-        // £todo Still need some type of payment for Stewards. - not solved yet. 
-
-        // REDEEM MERIT NFTS FOR REWARD  //
-        // inputParams = new string[](1);
-        // inputParams[0] = "address PayableTo"; // the address of the participant redeeming the 'Merit' NFT
-
-        // mandateCount++;
-        // conditions.allowedRole = type(uint256).max; // = anyone
-        // constitution.push(
-        //     PowersTypes.MandateInitData({
-        //         nameDescription: "Redeem 'Merit' NFTs for a rewards: Anyone with a 'Merit' NFT can redeem for a reward.",
-        //         targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "GovernedToken_BurnToAccess"),
-        //         config: abi.encode(
-        //             inputParams,
-        //             createPlaceholderAddress("Dependency0") // the actvityToken contract where 'Merit' NFTs are minted
-        //             ), // input params can include details about the redemption process, such as the rewards available and the criteria for redeeming 'Merit' NFTs.
-        //         conditions: conditions
-        //     })
-        // );
-        // delete conditions;
-
-        // // public: claim preset payment. 
-        // // Note that this can be changed / update by adopting new mandate. 
-        // mandateCount++;
-        // conditions.allowedRole = type(uint256).max;
-        // conditions.needFulfilled = mandateCount - 1; // need the previous redeem 'Merit' NFTs for rewards mandate to be fulfilled.  
-        // constitution.push(
-        //     PowersTypes.MandateInitData({
-        //         nameDescription: "Claim payment: Anyone can claim a preset payment for redeeming 'Merit' NFTs.",
-        //         targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "SafeAllowance_PresetTransfer"),
-        //         config: abi.encode(
-        //             deployMandates.getInitialisedAddress("Erc20Taxed"), 
-        //             1 * 10 ** 18, // amount to be paid out for redeeming 'Merit' NFTs. For example, 100 tokens with 18 decimals.
-        //             helperConfig.getSafeAllowanceModule(block.chainid), 
-        //             treasury
-        //             ),
-        //         conditions: conditions
-        //     })
-        // );
-        // delete conditions;
 
         // MISCELLANEOUS //
         mandateIds = new uint16[](2);
@@ -577,8 +533,6 @@ contract PhysicalLayer is DeploySetup {
             })
         );
         delete conditions;
-
-        // EDITING HERE 
 
         // LEGAL REPS CAN PAUSE AND RESTART MANDATES //
         mandateIds = new uint16[](2);

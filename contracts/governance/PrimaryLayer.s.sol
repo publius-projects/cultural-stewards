@@ -77,13 +77,13 @@ contract PrimaryLayer is DeploySetup {
     //                          CONSTITUTE                              //
     //////////////////////////////////////////////////////////////////////
     function constitutePowers(
-        address digitalSubDAO, 
+        address digitalLayer, 
         address ideasLayerFactory, 
         address physicalLayerFactory, 
         address activityToken,
         address electionRegistry
         ) public { // add here dependencies. 
-        _createConstitution(digitalSubDAO, ideasLayerFactory, physicalLayerFactory, activityToken, electionRegistry);
+        _createConstitution(digitalLayer, ideasLayerFactory, physicalLayerFactory, activityToken, electionRegistry);
          
         for (uint256 i = 0; i < constitution.length; i += PACKAGE_SIZE) {
             uint256 packageLength = constitution.length - i < PACKAGE_SIZE ? constitution.length - i : PACKAGE_SIZE;
@@ -115,7 +115,7 @@ contract PrimaryLayer is DeploySetup {
     //                        CONSTITUTION                              //
     //////////////////////////////////////////////////////////////////////
     function _createConstitution(
-        address digitalSubDAO, 
+        address digitalLayer, 
         address ideasLayerFactory, 
         address physicalLayerFactory, 
         address activityToken,
@@ -156,7 +156,7 @@ contract PrimaryLayer is DeploySetup {
         calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount2);
         // calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount3);
         calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
-        calldatas[11] = abi.encodeWithSelector(IPowers.assignRole.selector, 5, digitalSubDAO);
+        calldatas[11] = abi.encodeWithSelector(IPowers.assignRole.selector, 5, digitalLayer);
         calldatas[12] = abi.encodeWithSelector(IPowers.setTreasury.selector, treasury);
         calldatas[13] = abi.encodeWithSelector( // cal to set allowance module to the Safe treasury.
             Safe.execTransaction.selector,
@@ -180,7 +180,7 @@ contract PrimaryLayer is DeploySetup {
             0, // The internal transaction's value in this mandate is always 0. To transfer Eth use a different mandate.
             abi.encodeWithSignature(
                 "addDelegate(address)", // == AllowanceModule.addDelegate.selector,  (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
-                digitalSubDAO
+                digitalLayer
             ),
             0, // operation = Call
             0, // safeTxGas
@@ -358,46 +358,6 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
         requestNewPhysicalLayerId = mandateCount; // needed for call from ideas layer
-
-        // Steward: deploy a soulbound1155 instance by calling the factory
-        // using bespokeAction_advance to be able to keep the admin field as input.  
-        // mandateCount++;
-        // conditions.allowedRole = 2; // = Any Steward 
-        // conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled.
-        // constitution.push(
-        //     PowersTypes.MandateInitData({
-        //         nameDescription: "Deploy Merit Badge Contract: Deploy a Soulbound1155 contract to be used as merit badges for the Physical Layer",
-        //         targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
-        //         config: abi.encode(
-        //             registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Soulbound1155Factory"), 
-        //             Soulbound1155Factory.createSoulbound1155.selector,
-        //             abi.encode("https://aqua-famous-sailfish-288.mypinata.cloud/ipfs/bafkreighx6axdemwbjara3xhhfn5yaiktidgljykzx3vsrqtymicxxtgvi"), 
-        //             inputParams, // these dynamic params will be ignored by the factory, but are needed to link the mandate to its chain. 
-        //             abi.encode() 
-        //         ),
-        //         conditions: conditions
-        //     })
-        // ); 
-
-        // Steward update the dependencies of the create Physical Layer mandate to include the newly deployed Soulbound1155 as a dependency, so that it can be used in the config of the execute Physical Layer creation mandate.
-        // mandateCount++;
-        // conditions.allowedRole = 2; // = Any Steward
-        // conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled. 
-        // constitution.push(
-        //     PowersTypes.MandateInitData({
-        //         nameDescription: "Add dependency: Add the deployed Soulbound1155 as a dependency to the create Physical Layer mandate",
-        //         targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_OnReturnValue"),
-        //         config: abi.encode(
-        //             address(PhysicalLayerFactory), // target contract
-        //             PowersFactory.addDependency.selector,
-        //             abi.encode(), 
-        //             inputParams, // these dynamic params will be ignored by the factory, but are needed to link the mandate to its chain. 
-        //             mandateCount - 1, // the return value of the deployment needs to be added as dependency.
-        //             abi.encode() 
-        //         ),
-        //         conditions: conditions
-        //     })
-        // ); 
 
         // Primary Steward: Execute Physical Layer creation
         mandateCount++; 
@@ -877,8 +837,6 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-
-
         //////////////////////////////////////////////////////////////////////
         //                      ELECTORAL MANDATES                          //
         //////////////////////////////////////////////////////////////////////
@@ -983,11 +941,13 @@ contract PrimaryLayer is DeploySetup {
         delete conditions;
 
         // ELECT Primary Steward //
-        mandateIds = new uint16[](4);
+        mandateIds = new uint16[](6);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
         mandateIds[2] = mandateCount + 3;
         mandateIds[3] = mandateCount + 4; 
+        mandateIds[4] = mandateCount + 5;
+        mandateIds[5] = mandateCount + 6;
 
         flows.push(PowersTypes.Flow({
             nameDescription: "Elect Primary Steward: This flow includes the creation of an Steward election, opening the vote, tallying the results and cleaning up after the election. Any Participant can trigger this flow, but it requires multiple steps that need to be executed by different roles, so effectively it requires the coordination of both Participants and Primary Steward to successfully elect new Primary Steward.",
@@ -1074,130 +1034,7 @@ contract PrimaryLayer is DeploySetup {
                 conditions: conditions
             })
         );
-        delete conditions;
-
-        // VOTE OF NO CONFIDENCE // 
-        mandateIds = new uint16[](5);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-        mandateIds[2] = mandateCount + 3;
-        mandateIds[3] = mandateCount + 4; 
-        mandateIds[4] = mandateCount + 5;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Vote of No Confidence: This flow includes the creation of a vote of no confidence mandate that can be triggered by any Participant against the Primary Steward, and if successful, the revoking of all Steward roles. This flow is designed to ensure that the Primary Steward remain accountable to the Participants and can be removed if they are not fulfilling their duties satisfactorily.",
-            mandateIds: mandateIds
-        }));
-
-        // very similar to elect Primary Steward, but no throttle, higher threshold and ALL Primary Steward get role revoked the moment the first mandate passes.
-        inputParams = new string[](3);
-        inputParams[0] = "string Title";
-        inputParams[1] = "uint48 StartBlock";
-        inputParams[2] = "uint48 EndBlock";
-
-        // Participants: Vote of No Confidence 
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 77; // high majority
-        conditions.quorum = 60; // = high quorum 
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Vote of No Confidence: Revoke Steward statuses.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "RevokeAccountsRoleId"),
-                config: abi.encode(
-                    2, // roleId
-                    inputParams // the input params to fill out.
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: create election
-        mandateCount++;
-        conditions.allowedRole = 1; // = Participants 
-        conditions.needFulfilled = mandateCount - 1; // = previous Vote of No Confidence mandate. Note: NO throttle on this one.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Create an Steward election: an election for the Steward role can be initiated be any Participant.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
-                config: abi.encode(
-                    electionRegistry, // election list contract
-                    ElectionRegistry.createElection.selector, // selector
-                    inputParams
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: Open Vote for election
-        mandateCount++;
-        conditions.allowedRole = 1; // = Participants
-        conditions.needFulfilled = mandateCount - 1; // = Create election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Open voting for Steward election: Participants can open the vote for an Steward election. This will create a dedicated vote mandate.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_CreateVoteMandate"),
-                config: abi.encode(
-                    electionRegistry, // election list contract
-                    registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Vote"), // the vote mandate address
-                    1, // the max number of votes a voter can cast
-                    1 // the role Id allowed to vote (Participants)
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: Tally election
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.needFulfilled = mandateCount - 1; // = Open Vote election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Tally Steward elections: After an Steward election has finished, assign the Steward role to the winners.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Tally"),
-                config: abi.encode(
-                    electionRegistry,
-                    2, // RoleId for Primary Steward
-                    5 // Max role holders
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: clean up election
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.needFulfilled = mandateCount - 1; // = Tally election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Clean up Steward election: After an Steward election has finished, clean up related mandates.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_OnReturnValue"),
-                config: abi.encode(
-                    address(powers), // target contract
-                    IPowers.revokeMandate.selector, // function selector to call
-                    abi.encode(), // params before
-                    inputParams, // dynamic params (the input params of the parent mandate)
-                    mandateCount - 2, // parent mandate id (the open vote  mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Nominate for Steward election: Any Participant can nominate themselves or other Participants for the Steward election, and can also revoke their nomination. This flow includes the nomination and revoking of nomination for the Steward election.",
-            mandateIds: mandateIds
-        }));
+        delete conditions; 
 
         // Participants: Nominate for Steward election
         mandateCount++;

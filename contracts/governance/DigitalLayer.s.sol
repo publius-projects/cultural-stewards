@@ -45,11 +45,11 @@ contract DigitalLayer is DeploySetup {
     //                          CONSTITUTE                              //
     //////////////////////////////////////////////////////////////////////
     function constitutePowers(
-        address PrimaryLayer,
+        address primaryLayer,
         address electionRegistry, 
         uint16 requestAllowanceDigitalLayerId
     ) public {
-        _createConstitution(PrimaryLayer, electionRegistry, requestAllowanceDigitalLayerId);
+        _createConstitution(primaryLayer, electionRegistry, requestAllowanceDigitalLayerId);
         
         for (uint256 i = 0; i < constitution.length; i += PACKAGE_SIZE) {
             uint256 packageLength = constitution.length - i < PACKAGE_SIZE ? constitution.length - i : PACKAGE_SIZE;
@@ -77,7 +77,7 @@ contract DigitalLayer is DeploySetup {
     //                        CONSTITUTION                              //
     //////////////////////////////////////////////////////////////////////
     function _createConstitution(
-        address PrimaryLayer,
+        address primaryLayer,
         address electionRegistry,
         uint16 requestAllowanceDigitalLayerId
     ) internal {
@@ -87,15 +87,15 @@ contract DigitalLayer is DeploySetup {
         //                              SETUP                               //
         //////////////////////////////////////////////////////////////////////
         calldatas = new bytes[](10);
-        calldatas[0] = abi.encodeWithSelector(IPowers.labelRole.selector, 0, "Setup Initiator", "");  
-        calldatas[1] = abi.encodeWithSelector(IPowers.labelRole.selector, type(uint256).max, "Public", ""); 
-        calldatas[2] = abi.encodeWithSelector(IPowers.labelRole.selector, 1, "Participants", ""); 
-        calldatas[3] = abi.encodeWithSelector(IPowers.labelRole.selector, 2, "Repository Setup Initiators", "");  // £todo: update metadata 
+        calldatas[0] = abi.encodeWithSelector(IPowers.labelRole.selector, 0, "Admin", "");  
+        calldatas[1] = abi.encodeWithSelector(IPowers.labelRole.selector, type(uint256).max, "Read", ""); 
+        calldatas[2] = abi.encodeWithSelector(IPowers.labelRole.selector, 1, "Write", ""); 
+        calldatas[3] = abi.encodeWithSelector(IPowers.labelRole.selector, 2, "Maintain", "");   
         calldatas[4] = abi.encodeWithSelector(IPowers.labelRole.selector, 6, "Primary Layer", ""); 
         calldatas[5] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
         calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
-        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, PrimaryLayer);
+        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer);
         calldatas[9] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use.
 
         mandateCount++;
@@ -120,7 +120,7 @@ contract DigitalLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Request Allowances from Prime DAO: This flow includes the veto and request of allowances from the Primary Layer.",
+            nameDescription: "Request Allowances from Primary Layer: This flow includes the veto and request of allowances from the Primary Layer.",
             mandateIds: mandateIds
         }));
 
@@ -156,7 +156,7 @@ contract DigitalLayer is DeploySetup {
                 nameDescription: "Request allowance: Repository admins can request an allowance from the Primary Layer Safe Treasury.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
                 config: abi.encode(
-                    address(PrimaryLayer), // target contract
+                    address(primaryLayer), // target contract
                     requestAllowanceDigitalLayerId, // parent mandate id (the request allowance at primary DAO mandate)
                     "Requesting allowance from Primary Layer Safe Treasury",
                     inputParams // dynamic params (the input params of the parent mandate)
@@ -226,54 +226,6 @@ contract DigitalLayer is DeploySetup {
         );
         delete conditions;
 
-        // PAYMENT OF PROJECTS //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Payment of Projects: This flow includes the submission and approval of projects for funding.",
-            mandateIds: mandateIds
-        }));
-
-        inputParams = new string[](3);
-        inputParams[0] = "address Token";
-        inputParams[1] = "uint256 Amount";
-        inputParams[2] = "address PayableTo";
-
-        // Participants: Submit a project (Payment Before Action)
-        mandateCount++;
-        conditions.allowedRole = 1; // Participants can propose a project.
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid));
-        conditions.succeedAt = 51;
-        conditions.quorum = 5; // note the low quorum to encourage proposals.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Submit a project for Funding: Any Participant can submit a project for funding.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
-                config: abi.encode(inputParams),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Repository admins: Approve Funding of Project
-        mandateCount++;
-        conditions.allowedRole = 2; // Repository admins
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid));
-        conditions.succeedAt = 67;
-        conditions.quorum = 50;
-        conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Approve funding of project: Execute a transaction from the Safe Treasury.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "SafeAllowance_Transfer"),
-                config: abi.encode(helperConfig.getSafeAllowanceModule(block.chainid), treasury),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
         // MISCELLANEOUS //
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
@@ -328,13 +280,13 @@ contract DigitalLayer is DeploySetup {
         //                      ELECTORAL MANDATES                          //
         //////////////////////////////////////////////////////////////////////
 
-        // ASSIGN ParticipantSHIP // -- on the basis of contributions to website
+        // ASSIGN WRITE ROLE // -- on the basis of contributions to website
         mandateIds = new uint16[](2);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Assign Participant: This flow allows users to apply for and claim Participant roles based on their GitHub contributions.",
+            nameDescription: "Assign Write Role: This flow allows users to apply for and claim Write roles based on their GitHub contributions.",
             mandateIds: mandateIds
         }));
 
@@ -439,12 +391,14 @@ contract DigitalLayer is DeploySetup {
 
 
         // ELECT Repository admins //
-        mandateIds = new uint16[](4);
+        mandateIds = new uint16[](6);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
         mandateIds[2] = mandateCount + 3;
         mandateIds[3] = mandateCount + 4;
-
+        mandateIds[4] = mandateCount + 5;
+        mandateIds[5] = mandateCount + 6;
+        
         flows.push(PowersTypes.Flow({
             nameDescription: "Elect Repository Setup Initiators: This flow includes the creation, voting, tallying, and cleanup of an election for Repository Setup Initiators.",
             mandateIds: mandateIds
@@ -531,129 +485,6 @@ contract DigitalLayer is DeploySetup {
         );
         delete conditions;
 
-        // VOTE OF NO CONFIDENCE // 
-        mandateIds = new uint16[](5);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-        mandateIds[2] = mandateCount + 3;
-        mandateIds[3] = mandateCount + 4;
-        mandateIds[4] = mandateCount + 5;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Vote of No Confidence: This flow allows Participants to call a vote of no confidence to revoke Convener statuses and hold a new election.",
-            mandateIds: mandateIds
-        }));
-
-        // very similar to elect Repository admins, but no throttle, higher threshold and ALL executives get role revoked the moment the first mandate passes.
-        inputParams = new string[](3);
-        inputParams[0] = "string Title";
-        inputParams[1] = "uint48 StartBlock";
-        inputParams[2] = "uint48 EndBlock";
-
-        // Participants: Vote of No Confidence 
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 77; // high majority
-        conditions.quorum = 60; // = high quorum 
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Vote of No Confidence: Revoke Convener statuses.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "RevokeAccountsRoleId"),
-                config: abi.encode(
-                    2, // roleId
-                    inputParams // the input params to fill out.
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: create election
-        mandateCount++;
-        conditions.allowedRole = 1; // = Participants (should be Convener according to MD, but code says Participants)
-        conditions.needFulfilled = mandateCount - 1; // = previous Vote of No Confidence mandate. Note: NO throttle on this one.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Create a Convener election: an election for the convener role can be initiated be any Participant.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
-                config: abi.encode(
-                    electionRegistry, // election list contract
-                    ElectionRegistry.createElection.selector, // selector
-                    inputParams
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: Open Vote for election
-        mandateCount++;
-        conditions.allowedRole = 1; // = Participants
-        conditions.needFulfilled = mandateCount - 1; // = Create election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Open voting for Convener election: Participants can open the vote for a convener election. This will create a dedicated vote mandate.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_CreateVoteMandate"),
-                config: abi.encode(
-                    electionRegistry, // election list contract
-                    registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Vote"), // the vote mandate address
-                    1, // the max number of votes a voter can cast
-                    1 // the role Id allowed to vote (Participants)
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: Tally election
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.needFulfilled = mandateCount - 1; // = Open Vote election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Tally Convener elections: After a convener election has finished, assign the Convener role to the winners.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Tally"),
-                config: abi.encode(
-                    electionRegistry,
-                    2, // RoleId for Repository admins
-                    5 // Max role holders
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Participants: clean up election
-        mandateCount++;
-        conditions.allowedRole = 1;
-        conditions.needFulfilled = mandateCount - 1; // = Tally Convener election
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Clean up Convener election: After a convener election has finished, clean up related mandates.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_OnReturnValue"),
-                config: abi.encode(
-                    address(powers), // target contract
-                    IPowers.revokeMandate.selector, // function selector to call
-                    abi.encode(), // params before
-                    inputParams, // dynamic params (the input params of the parent mandate)
-                    mandateCount - 2, // parent mandate id (the open vote  mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Nominate for Election: This flow allows Participants to nominate themselves or revoke their nomination for an election.",
-            mandateIds: mandateIds
-        }));
-
         // Participants: Nominate for Executive election
         mandateCount++;
         conditions.allowedRole = 1; // = Participants (should be Repository admins according to MD, but code says Participants)
@@ -722,13 +553,13 @@ contract DigitalLayer is DeploySetup {
         );
         delete conditions;
 
-        // PrimaryLayer: Veto Adopting Mandates
+        // primaryLayer: Veto Adopting Mandates
         mandateCount++;
-        conditions.allowedRole = 6; // PrimaryLayer
+        conditions.allowedRole = 6; // primaryLayer
         conditions.needFulfilled = mandateCount - 1;
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto Adopting Mandates: PrimaryLayer can veto proposals to adopt new mandates", 
+                nameDescription: "Veto Adopting Mandates: primaryLayer can veto proposals to adopt new mandates", 
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
                 config: abi.encode(adoptMandatesParams),
                 conditions: conditions
