@@ -86,7 +86,7 @@ contract PhysicalLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
 
         // setup role labels // 
-        calldatas = new bytes[](10);
+        calldatas = new bytes[](11);
         calldatas[0] = abi.encodeWithSelector(IPowers.labelRole.selector, 0, "Setup Initiator", "");  
         calldatas[1] = abi.encodeWithSelector(IPowers.labelRole.selector, type(uint256).max, "Public", ""); 
         calldatas[2] = abi.encodeWithSelector(IPowers.labelRole.selector, 1, "Attendee", ""); 
@@ -95,15 +95,16 @@ contract PhysicalLayer is DeploySetup {
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 6, "Primary Layer", "");
         calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
-        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
-        calldatas[9] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use. 
+        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
+        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
+        calldatas[10] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use. 
 
         mandateCount++;
         conditions.allowedRole = type(uint256).max; // = public.
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Initial Setup: Assign role labels and revokes itself after execution",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "PresetActions_OnOwnPowers"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PresetActions_OnOwnPowers"),
                 config: abi.encode(calldatas),
                 conditions: conditions
             })
@@ -113,7 +114,7 @@ contract PhysicalLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
         //                      EXECUTIVE MANDATES                          //
         //////////////////////////////////////////////////////////////////////
-        // £NB: Minting and setting the URI no all managed externally from this DAO. 
+        // £NB: Minting and setting the URI no all managed externally from this Layer. 
         // The artist has to assign the layer as approved to transfer artworks. 
   
         // StewardS FORCE SELL NFT ART WORK //
@@ -131,7 +132,7 @@ contract PhysicalLayer is DeploySetup {
         inputParams[1] = "address newOwner";
         inputParams[2] = "uint256 TokenId";
         inputParams[3] = "bytes Data"; // encoded PaymentToken + quantity + nonce. 
-        // Note that technically the Physical Layer can pay for sale if the buyer paid the Sub-DAO directly. It would result in the layer owning the NFT, while buyer has the physical artwork. 
+        // Note that technically the Physical Layer can pay for sale if the buyer paid the Layer directly. It would result in the layer owning the NFT, while buyer has the physical artwork. 
 
         // NB: this will only work if the physical layer has been approved by the artist to transfer the art work NFTs. This is to ensure that artists have control over which art works can be sold through the layer.
         mandateCount++;
@@ -139,7 +140,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Sell NFT artwork: Stewards can sell NFT art works, which will automatically transfer from the owner of the NFT to the buyer and distribute payments according to splits set by the governed721DAO.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     governed721,
                     Governed721.safeTransferFrom.selector,
@@ -161,7 +162,7 @@ contract PhysicalLayer is DeploySetup {
         }));
 
         inputParams = new string[](5);
-        inputParams[0] = "address Sub-DAO";
+        inputParams[0] = "address PhysicalLayer";
         inputParams[1] = "address Token";
         inputParams[2] = "uint96 allowanceAmount";
         inputParams[3] = "uint16 resetTimeMin";
@@ -173,7 +174,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto request allowance: Stewards can veto a request for additional allowance", //
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -190,10 +191,10 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Request allowance: Repository admins can request an allowance from the Primary Layer Safe Treasury.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode(
                     address(primaryLayer), // target contract
-                    requestAllowancePhysicalLayerId, // parent mandate id (the request allowance at primary DAO mandate)
+                    requestAllowancePhysicalLayerId, // parent mandate id (the request allowance at primary Layer mandate)
                     "Requesting allowance from Primary Layer Safe Treasury",
                     inputParams // dynamic params (the input params of the parent mandate)
                 ),
@@ -225,7 +226,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Submit & Approve payment of receipt: Execute a transaction from the Safe Treasury.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "SafeAllowance_Transfer"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "SafeAllowance_Transfer"),
                 config: abi.encode(helperConfig.getSafeAllowanceModule(block.chainid), treasury),
                 conditions: conditions
             })
@@ -252,7 +253,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Mint POAP: Any Steward can mint a POAP.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode(
                     address(primaryLayer),
                     uint16(mintPoapTokenId), // parent mandate id (the mint POAP token at primary DAO mandate)
@@ -270,7 +271,7 @@ contract PhysicalLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Miscellaneous powers: This flow includes updating the URI and recovering tokens sent to the DAO by mistake.",
+            nameDescription: "Miscellaneous powers: This flow includes updating the URI and recovering tokens sent to the Layer by mistake.",
             mandateIds: mandateIds
         }));
 
@@ -287,7 +288,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Update URI: Set allowed token for Physical Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     address(0), // target address is its own powers contract
                     Powers.setUri.selector, // function selector to call
@@ -303,8 +304,8 @@ contract PhysicalLayer is DeploySetup {
         conditions.allowedRole = 2; // = Stewards. Any Steward can call this mandate.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the DAO can be recovered by sending them to the treasury",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Safe_RecoverTokens"), // maybe functionality has to change slightly: have token to be transferred as input param. 
+                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the Layer can be recovered by sending them to the treasury",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_RecoverTokens"), // maybe functionality has to change slightly: have token to be transferred as input param. 
                 config: abi.encode(
                     treasury, 
                     helperConfig.getSafeAllowanceModule(block.chainid) // allowance module address
@@ -332,12 +333,12 @@ contract PhysicalLayer is DeploySetup {
         conditions.allowedRole = type(uint256).max; // = public
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request Membership: Anyone can become a member if they have sufficient activity token from the DAO 1 tokens during the last 15 days.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "GovernedToken_GatedAccess"),
+                nameDescription: "Request Membership: Anyone can become a member if they have sufficient activity token from the Layer 1 tokens during the last 15 days.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "GovernedToken_GatedAccess"),
                 config: abi.encode(
                     activityToken, // soulbound token contract
                     1, // attendee role Id
-                    0, // checks if token is from address that holds role Id 0 (meaning the admin, which is the DAO itself).
+                    0, // checks if token is from address that holds role Id 0 (meaning the admin, which is the Layer itself).
                     uint48(daysToBlocks(15, helperConfig.getBlocksPerHour(block.chainid))), // look back period in blocks = 15 days.
                     uint48(1) // number of tokens required. Only one POAP needed for membership.
                 ),
@@ -346,7 +347,7 @@ contract PhysicalLayer is DeploySetup {
         );
         delete conditions;
 
-        // SELECT StewardS //
+        // SELECT Stewards //
         mandateIds = new uint16[](4);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -367,7 +368,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "ZK-Passport Check Age: Anyone over the age of 18 can propose to be a Steward for the Physical Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ZKPassport_Check"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ZKPassport_Check"),
                 config: abi.encode(
                     inputParams,
                     helperConfig.getZkPassportRootRegistry(block.chainid), // the address of the ZK-Passport root registry contract, which is needed to verify the ZKPs. This is set in the helper config for each chain.
@@ -388,7 +389,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Nominate for selection: any member can nominate to be selected for Steward role.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Nominate"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Nominate"),
                 config: abi.encode(
                     nominees // election list contract
                 ),
@@ -406,7 +407,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Revoke nomination for election: Legal Interfacers can revoke nominations for Steward elections.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
                 config: abi.encode(
                     nominees, // election list contract
                     Nominees.revokeNomination.selector,
@@ -426,7 +427,7 @@ contract PhysicalLayer is DeploySetup {
         conditions.quorum = 80; // = 80% quorum
         initData[0] = PowersTypes.MandateInitData({
                 nameDescription: "Select Stewards: Legal Interfacers can select Stewards from the pool of nominees.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "PeerSelect"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PeerSelect"),
                 config: abi.encode(
                     uint8(3), // numberToSelect
                     uint256(2), // RoleId for Stewards
@@ -453,7 +454,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Assign Legal Interfacers: Primary Layer can assign legal Interfacers, who have the power to adopt and revoke executive mandates.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
                 config: abi.encode(
                     address(0), // target is its own powers contract
                     IPowers.assignRole.selector,
@@ -495,7 +496,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Initiate Adopting Mandates: Members can initiate adopting new mandates",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(adoptMandatesParams),
                 conditions: conditions
             })
@@ -509,7 +510,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto Adopting Mandates: primaryLayer can veto proposals to adopt new mandates", 
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(adoptMandatesParams),
                 conditions: conditions
             })
@@ -527,7 +528,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Adopt new Mandates: Stewards can adopt new mandates into the organization",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Adopt_Mandates"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Adopt_Mandates"),
                 config: abi.encode(),
                 conditions: conditions
             })
@@ -540,7 +541,7 @@ contract PhysicalLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Executive Mandates Management: This flow allows Legal Interfacers to adopt or revoke executive mandates, effectively controlling the DAO's functional state.",
+            nameDescription: "Executive Mandates Management: This flow allows Legal Interfacers to adopt or revoke executive mandates, effectively controlling the Layer's functional state.",
             mandateIds: mandateIds
         }));
 
@@ -570,7 +571,7 @@ contract PhysicalLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Pause Mandates: Legal Interfacers can pause mandates in the organization",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "PauseMandates"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PauseMandates"),
                 config: abi.encode(
                     indexFlows,
                     indexMandates

@@ -24,7 +24,7 @@ contract IdeasLayer is DeploySetup {
     //                        INITIALISATION                            //
     //////////////////////////////////////////////////////////////////////
     function run() public { 
-        console2.log("Deploying Ideas Sub-DAO factory (contract only)...");
+        console2.log("Deploying Ideas Layer factory (contract only)...");
         vm.startBroadcast();
         PowersDeployer IdeasLayerDeployer = new PowersDeployer();
         powersFactory = new PowersFactory(
@@ -76,31 +76,33 @@ contract IdeasLayer is DeploySetup {
         uint16 requestParticipantpowersId,
         uint16 requestNewPhysicalLayerId
     ) internal {
-        mandateCount = 5; // resetting mandate count.
+        mandateCount = 4; // resetting mandate count.
 
         //////////////////////////////////////////////////////////////////////
         //                              SETUP                               //
         //////////////////////////////////////////////////////////////////////
         // setup role labels // 
-        calldatas = new bytes[](11);
+        calldatas = new bytes[](13);
         calldatas[0] = abi.encodeWithSelector(IPowers.labelRole.selector, 0, "Setup Initiator", "");  
         calldatas[1] = abi.encodeWithSelector(IPowers.labelRole.selector, type(uint256).max, "Public", ""); 
         calldatas[2] = abi.encodeWithSelector(IPowers.labelRole.selector, 1, "Participants", "");
         calldatas[3] = abi.encodeWithSelector(IPowers.labelRole.selector, 2, "Stewards", ""); 
         calldatas[4] = abi.encodeWithSelector(IPowers.labelRole.selector, 3, "Assessors", "");  
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 6, "Primary Layer", "");
-        calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
-        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
-        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
-        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
-        calldatas[10] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use.
+        calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 0, cedars);
+        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
+        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, 0xc9ce1DC547C42F66464f5a7f0E3cd60EBf1C5Bd2);
+        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
+        calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
+        calldatas[11] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
+        calldatas[12] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use.
 
         mandateCount++;
         conditions.allowedRole = type(uint256).max; // = public.
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Initial Setup: Assign role labels and revokes itself after execution",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "PresetActions_OnOwnPowers"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PresetActions_OnOwnPowers"),
                 config: abi.encode(calldatas),
                 conditions: conditions
             })
@@ -110,9 +112,57 @@ contract IdeasLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
         //                      EXECUTIVE MANDATES                          //
         //////////////////////////////////////////////////////////////////////
+ 
+        // ASSIGN PARTICIPANT //
+        uint16[] memory mandateIds = new uint16[](2);
+        mandateIds[0] = mandateCount + 1;
+        mandateIds[1] = mandateCount + 2;
 
-        // REQUEST CREATION NEW PHYSICAL DAO //
-        uint16[] memory mandateIds = new uint16[](3);
+        flows.push(PowersTypes.Flow({
+            nameDescription: "Assign Participant: This flow allows users to apply for and claim a Participant role based on forum participation.",
+            mandateIds: mandateIds
+        }));
+
+        // public: apply for Participant
+        inputParams = new string[](2);
+        inputParams[0] = "address ApplicantAddress";
+        inputParams[1] = "string ApplicationURI";
+
+        mandateCount++;
+        conditions.allowedRole = type(uint256).max; // = Public
+        conditions.throttleExecution = minutesToBlocks(10, helperConfig.getBlocksPerHour(block.chainid)); // to avoid spamming, the mandate is throttled.
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Apply for Participant role: Anyone can apply for a Participant role to the Ideas Layer by submitting an application.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
+                config: abi.encode(inputParams),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // Assessors: assess and assign Participant
+        mandateCount++;
+        conditions.allowedRole = 3; // = Assessors
+        conditions.needFulfilled = mandateCount - 1; // need the application to have been submitted.
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Assess and Assign Participant: Assessors can assess applications and assign a Participant role to applicants.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
+                config: abi.encode( 
+                    address(0),
+                    IPowers.assignRole.selector, // function selector to call
+                    abi.encode(1), // params before (role id 1 = Participants) // the static params
+                    inputParams, // the dynamic params (the input params of the parent mandate) -- NB: not that any excess data at the END OF CALLDATA is ignored. hence we can add the uri - it will not be taken into consideration. 
+                    abi.encode() // no args after
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // REQUEST CREATION NEW PHYSICAL Layer //
+        mandateIds = new uint16[](3);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
         mandateIds[2] = mandateCount + 3;
@@ -134,7 +184,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Request new Physical Layer: Participants can initiate the request for creating a new Physical Layer under the Primary Layer.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -148,15 +198,15 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto request for new Physical Layer: Assessors can veto the request for creating a new Physical Layer under the Primary Layer.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
         );
         delete conditions;
 
-        // Stewards: request at Primary Layer the creation of a new physical DAO.
-        // Note: this is a statement of intent. Physical DAOs are requested using a working group, after initated here by Stewards.
+        // Stewards: request at Primary Layer the creation of a new physical layer.
+        // Note: this is a statement of intent. Physical layers are requested using a working group, after initated here by Stewards.
         mandateCount++;
         conditions.allowedRole = 2; // = Stewards
         conditions.quorum = 51; // simple majority
@@ -167,7 +217,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Request new Physical Layer: Stewards can create a new Physical Layer.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode( 
                     primaryLayer,
                     requestNewPhysicalLayerId, // parent mandate id (the create new physical layer at Primary Layer mandate)
@@ -186,7 +236,7 @@ contract IdeasLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Miscellaneous powers: This flow includes updating the URI and recovering tokens sent to the DAO by mistake.",
+            nameDescription: "Miscellaneous powers: This flow includes updating the URI and recovering tokens sent to the Ideas Layer by mistake.",
             mandateIds: mandateIds
         }));
 
@@ -203,7 +253,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Update URI: Set allowed token for Physical Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     address(0), // target address is its own powers contract
                     Powers.setUri.selector, // function selector to call
@@ -219,63 +269,11 @@ contract IdeasLayer is DeploySetup {
         conditions.allowedRole = 2; // = Stewards. Any Steward can call this mandate.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the DAO can be recovered by sending them to the treasury",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Safe_RecoverTokens"),
+                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the Ideas Layer can be recovered by sending them to the treasury",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_RecoverTokens"),
                 config: abi.encode(
                     safeTreasury, // this should be the safe treasury!
                     helperConfig.getSafeAllowanceModule(block.chainid) // allowance module address
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        //////////////////////////////////////////////////////////////////////
-        //                      ELECTORAL MANDATES                          //
-        //////////////////////////////////////////////////////////////////////
-
-        // ASSIGN PARTICIPANT //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Assign Participant: This flow allows users to apply for and claim Participant roles based on forum participation.",
-            mandateIds: mandateIds
-        }));
-
-        // public: apply for Participant
-        inputParams = new string[](2);
-        inputParams[0] = "address ApplicantAddress";
-        inputParams[1] = "string ApplicationURI";
-
-        mandateCount++;
-        conditions.allowedRole = type(uint256).max; // = Public
-        conditions.throttleExecution = minutesToBlocks(10, helperConfig.getBlocksPerHour(block.chainid)); // to avoid spamming, the mandate is throttled.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Apply for Participant: Anyone can apply for Participant to the DAO by submitting an application.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
-                config: abi.encode(inputParams),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Assessors: assess and assign Participant
-        mandateCount++;
-        conditions.allowedRole = 3; // = Assessors
-        conditions.needFulfilled = mandateCount - 1; // need the application to have been submitted.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Assess and Assign Participant: Assessors can assess applications and assign Participant to applicants.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
-                config: abi.encode( 
-                    address(0),
-                    IPowers.assignRole.selector, // function selector to call
-                    abi.encode(1), // params before (role id 1 = Participants) // the static params
-                    inputParams, // the dynamic params (the input params of the parent mandate) -- NB: not that any excess data at the END OF CALLDATA is ignored. hence we can add the uri - it will not be taken into consideration. 
-                    abi.encode() // no args after
                 ),
                 conditions: conditions
             })
@@ -288,7 +286,7 @@ contract IdeasLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Revoke Participant: This flow allows Participants to veto and Assessors to revoke Participant.",
+            nameDescription: "Revoke Participant: This flow allows Assessors to revoke Participant, Participants have a veto and can block the revocation.",
             mandateIds: mandateIds
         }));
 
@@ -302,8 +300,8 @@ contract IdeasLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 1; // need the revoke Participant mandate to have been fulfilled for the veto to be valid.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto Revoke Participant: Participants can veto revoking Participant from other Participants.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                nameDescription: "Veto Revoke Participant: Participants can veto revoking Participant Role.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -322,8 +320,8 @@ contract IdeasLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 2; // need the revoke Participant mandate to have been fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Revoke Participant: Assessors can revoke Participant from Participants.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
+                nameDescription: "Revoke Participant: Assessors can revoke Participant role from an account.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
                 config: abi.encode( 
                     address(0), // target is its own powers contract
                     IPowers.revokeRole.selector, // function selector to call
@@ -342,20 +340,20 @@ contract IdeasLayer is DeploySetup {
         mandateIds[1] = mandateCount + 2;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Request Participant of Primary Layer: This flow allows Participants to apply for Participant in the Primary Layer and Assessors to approve and forward the request.",
+            nameDescription: "Request Participant role at Primary Layer: This flow allows Participants to apply for Participant role in the Primary Layer and Assessors to approve and forward the request.",
             mandateIds: mandateIds
         }));
 
         inputParams = new string[](1);
         inputParams[0] = "uint256[] TokenIds";
 
-        // Participants: apply for Participant of Primary Layer. 
+        // Participants: apply for Participant role of Primary Layer. 
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Apply for Participant of Primary Layer: Participants can apply for Participant of the Primary Layer by submitting a request with their POAPs.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                nameDescription: "Apply for Participant role of Primary Layer: Participants can apply for Participant role of the Primary Layer by submitting a request with their POAPs.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -371,8 +369,8 @@ contract IdeasLayer is DeploySetup {
         conditions.quorum = 10; // low quorum.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request Participant of Primary Layer: Assessors can ok requests for Participant of the Primary Layer and send them to the Primary Layer for assessment.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ExternalAction_Simple"),
+                nameDescription: "Request Participant role of Primary Layer: Assessors can ok requests for Participant role of the Primary Layer and send them to the Primary Layer for assessment.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode( 
                     primaryLayer,
                     requestParticipantpowersId, // parent mandate id (the request Participant of Primary Layer mandate)
@@ -406,7 +404,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto Assign Assessor Role: Participants can veto assigning the Assessor role to an account.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -423,7 +421,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Assign Assessor Role: Stewards can assign the Assessor role to an account.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
                 config: abi.encode( 
                     address(0), // target is its own powers contract
                     IPowers.assignRole.selector, // function selector to call
@@ -456,7 +454,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto Revoke Assessor Role: Participants can veto revoking the Assessor role from an account.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -474,7 +472,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Revoke Assessor Role: Stewards can revoke the Assessor role from an account.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Advanced"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
                 config: abi.encode( 
                     address(0), // target is its own powers contract
                     IPowers.revokeRole.selector, // function selector to call
@@ -497,7 +495,7 @@ contract IdeasLayer is DeploySetup {
         mandateIds[5] = mandateCount + 6;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Elect Stewards: This flow includes the creation, voting, tallying, and cleanup of an election for Stewards.",
+            nameDescription: "Elect Stewards: This flow includes the creation, voting, tallying, and cleanup of an election for the Steward role.",
             mandateIds: mandateIds
         }));
 
@@ -512,8 +510,8 @@ contract IdeasLayer is DeploySetup {
         conditions.throttleExecution = minutesToBlocks(120, helperConfig.getBlocksPerHour(block.chainid)); // = once every 2 hours
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Create a Steward election: an election for the Steward role can be initiated be any Participant.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "BespokeAction_Simple"),
+                nameDescription: "Create a Steward election: an election for the Steward role can be initiated by any Participant.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     electionRegistry, // election list contract
                     ElectionRegistry.createElection.selector, // selector
@@ -531,10 +529,10 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Open voting for Steward election: Participants can open the vote for a Steward election. This will create a dedicated vote mandate.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_CreateVoteMandate"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_CreateVoteMandate"),
                 config: abi.encode(
                     electionRegistry, // election list contract
-                    registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Vote"), // the vote mandate address
+                    registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_Vote"), // the vote mandate address
                     1, // the max number of votes a voter can cast
                     1 // the role Id allowed to vote (Participants)
                 ),
@@ -550,7 +548,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Tally Steward elections: After a Steward election has finished, assign the Steward role to the winners.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Tally"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_Tally"),
                 config: abi.encode(
                     electionRegistry,
                     2, // RoleId for Stewards
@@ -568,7 +566,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Clean up Steward election: After a Steward election has finished, clean up related mandates.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_CleanUpVoteMandate"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_CleanUpVoteMandate"),
                 config: abi.encode(uint16(mandateCount - 2)), // The create vote mandate)
                 conditions: conditions
             })
@@ -581,7 +579,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Nominate for election: any Participant can nominate for an election.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Nominate"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_Nominate"),
                 config: abi.encode(
                     electionRegistry, // election list contract
                     true // nominate as candidate
@@ -597,7 +595,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Revoke nomination for election: any Participant can revoke their nomination for an election.",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "ElectionRegistry_Nominate"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_Nominate"),
                 config: abi.encode(
                     electionRegistry, // election list contract
                     false // revoke nomination
@@ -635,7 +633,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto Adopting Mandates: Participants can veto proposals to adopt new mandates",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "StatementOfIntent"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
             })
@@ -652,7 +650,7 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Adopt new Mandates: Stewards can adopt new mandates into the organization",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, IS_STRICT, "Adopt_Mandates"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Adopt_Mandates"),
                 config: abi.encode(),
                 conditions: conditions
             })
