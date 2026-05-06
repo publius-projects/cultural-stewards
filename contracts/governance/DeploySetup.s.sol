@@ -33,6 +33,7 @@ abstract contract DeploySetup is DeployHelpers {
     string[] dynamicParams;
     uint16 mandateCount;
     address treasury;
+    address paymaster; 
 
     // The mandate version to be used. 
     uint16 constant MAJOR = 0;

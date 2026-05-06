@@ -129,6 +129,7 @@ install-deps:
 	forge install safe-fndn/safe-modules --no-git || exit 1
 	forge install zkpassport/circuits --no-git || exit 1
 	forge install zkpassport/zkpassport-packages --no-git || exit 1
+	forge install eth-infinitism/account-abstraction@v0.7.0 --no-git || exit 1
 	@echo "Dependencies installed without git metadata."
 	
 
@@ -144,7 +145,10 @@ reset-deps:
 	@forge install safe-fndn/safe-smart-account@v1.4.1 --no-git || exit 1
 	@forge install safe-fndn/safe-modules --no-git || exit 1
 	@forge install zkpassport/circuits --no-git || exit 1
+	@forge install zkpassport/zkpassport-packages --no-git || exit 1
+	@forge install eth-infinitism/account-abstraction@v0.7.0 --no-git || exit 1
 	@echo "Dependencies reset complete. All libs installed without git metadata."
+	
 
 # Documentation
 doc:

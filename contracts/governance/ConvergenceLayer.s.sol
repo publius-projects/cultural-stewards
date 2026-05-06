@@ -7,12 +7,11 @@ import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/Powers
 import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
 import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
 import { Governed721 } from "@lib/powers-monorepo/solidity/src/helpers/Governed721.sol";
-import { Nominees } from "@lib/powers-monorepo/solidity/src/helpers/Nominees.sol";
-import { ZKPassportHelper } from "@lib/circuits/src/solidity/src/ZKPassportHelper.sol";
+import { Nominees } from "@lib/powers-monorepo/solidity/src/helpers/Nominees.sol"; 
 import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol";
 import { PowersDeployer } from "@lib/powers-monorepo/solidity/src/helpers/PowersDeployer.sol";
 
-contract PhysicalLayer is DeploySetup {
+contract ConvergenceLayer is DeploySetup {
     PowersTypes.Conditions conditions;
     PowersTypes.Flow[] flows;
 
@@ -26,19 +25,19 @@ contract PhysicalLayer is DeploySetup {
     //////////////////////////////////////////////////////////////////////
     function run() external { 
         // Deploy factories first (empty) so their addresses are available
-        console2.log("Deploying Physical Layer factory (contract only)...");
+        console2.log("Deploying Convergence Layer factory (contract only)...");
         vm.startBroadcast();
-        PowersDeployer PhysicalLayerDeployer = new PowersDeployer();  // £todo: I think this can be deployed as a singleton contract
+        PowersDeployer ConvergenceLayerDeployer = new PowersDeployer();  // £todo: I think this can be deployed as a singleton contract
         powersFactory = new PowersFactory(
-            "Physical Layer", // name
-            string.concat(baseURI, "physicalLayer.json"), // uri
+            "Convergence Layer", // name
+            string.concat(baseURI, "convergenceLayer.json"), // uri
             helperConfig.getMaxCallDataLength(block.chainid), // max call data length
             helperConfig.getMaxReturnDataLength(block.chainid), // max return data length
             helperConfig.getMaxExecutionsLength(block.chainid), // max executions length 
-            address(PhysicalLayerDeployer)
+            address(ConvergenceLayerDeployer)
         );
         vm.stopBroadcast(); 
-        console2.log("Physical Layer factory deployed at:", address(powersFactory));
+        console2.log("Convergence Layer factory deployed at:", address(powersFactory));
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -50,9 +49,9 @@ contract PhysicalLayer is DeploySetup {
         address activityToken,
         address nominees,
         uint16 mintPoapTokenId,
-        uint16 requestAllowancePhysicalLayerId
+        uint16 requestAllowanceConvergenceLayerId
     ) public {
-        _createConstitution(primaryLayer, governed721, activityToken, nominees, mintPoapTokenId, requestAllowancePhysicalLayerId);
+        _createConstitution(primaryLayer, governed721, activityToken, nominees, mintPoapTokenId, requestAllowanceConvergenceLayerId);
         
         PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
         vm.startBroadcast();
@@ -78,7 +77,7 @@ contract PhysicalLayer is DeploySetup {
         address activityToken,
         address nominees,
         uint16 mintPoapTokenId, 
-        uint16 requestAllowancePhysicalLayerId
+        uint16 requestAllowanceConvergenceLayerId
     ) internal {
         mandateCount = 3; // resetting mandate count. 
         //////////////////////////////////////////////////////////////////////
@@ -132,9 +131,9 @@ contract PhysicalLayer is DeploySetup {
         inputParams[1] = "address newOwner";
         inputParams[2] = "uint256 TokenId";
         inputParams[3] = "bytes Data"; // encoded PaymentToken + quantity + nonce. 
-        // Note that technically the Physical Layer can pay for sale if the buyer paid the Layer directly. It would result in the layer owning the NFT, while buyer has the physical artwork. 
+        // Note that technically the Convergence Layer can pay for sale if the buyer paid the Layer directly. It would result in the layer owning the NFT, while buyer has the convergence artwork. 
 
-        // NB: this will only work if the physical layer has been approved by the artist to transfer the art work NFTs. This is to ensure that artists have control over which art works can be sold through the layer.
+        // NB: this will only work if the convergence layer has been approved by the artist to transfer the art work NFTs. This is to ensure that artists have control over which art works can be sold through the layer.
         mandateCount++;
         conditions.allowedRole = 2; // Stewards. 
         constitution.push(
@@ -162,7 +161,7 @@ contract PhysicalLayer is DeploySetup {
         }));
 
         inputParams = new string[](5);
-        inputParams[0] = "address PhysicalLayer";
+        inputParams[0] = "address ConvergenceLayer";
         inputParams[1] = "address Token";
         inputParams[2] = "uint96 allowanceAmount";
         inputParams[3] = "uint16 resetTimeMin";
@@ -194,7 +193,7 @@ contract PhysicalLayer is DeploySetup {
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode(
                     address(primaryLayer), // target contract
-                    requestAllowancePhysicalLayerId, // parent mandate id (the request allowance at primary Layer mandate)
+                    requestAllowanceConvergenceLayerId, // parent mandate id (the request allowance at primary Layer mandate)
                     "Requesting allowance from Primary Layer Safe Treasury",
                     inputParams // dynamic params (the input params of the parent mandate)
                 ),
@@ -247,7 +246,7 @@ contract PhysicalLayer is DeploySetup {
 
         // Stewards: Mint POAPs for attendees
         // Note: for now this is managed through a bespoke Soulbound1155 contract. 
-        // Before a physical event is organised, this should be implemented through either POAP.xyz, or IYK protocols.    
+        // Before a convergence event is organised, this should be implemented through either POAP.xyz, or IYK protocols.    
         mandateCount++;
         conditions.allowedRole = 1; // = Stewards
         constitution.push(
@@ -259,56 +258,6 @@ contract PhysicalLayer is DeploySetup {
                     uint16(mintPoapTokenId), // parent mandate id (the mint POAP token at primary DAO mandate)
                     "Requesting minting of POAP from Primary Layer",
                     inputParams
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // MISCELLANEOUS //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Miscellaneous powers: This flow includes updating the URI and recovering tokens sent to the Layer by mistake.",
-            mandateIds: mandateIds
-        }));
-
-        // UPDATE URI //
-        inputParams = new string[](1);
-        inputParams[0] = "string newUri"; 
-
-        // Stewards: Update URI
-        mandateCount++;
-        conditions.allowedRole = 2; // = Stewards
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 66; // = 2/3 majority
-        conditions.quorum = 66; // = 66% quorum
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Update URI: Set allowed token for Physical Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
-                config: abi.encode(
-                    address(0), // target address is its own powers contract
-                    Powers.setUri.selector, // function selector to call
-                    inputParams
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // TRANSFER TOKENS INTO TREASURY //
-        mandateCount++;
-        conditions.allowedRole = 2; // = Stewards. Any Steward can call this mandate.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the Layer can be recovered by sending them to the treasury",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_RecoverTokens"), // maybe functionality has to change slightly: have token to be transferred as input param. 
-                config: abi.encode(
-                    treasury, 
-                    helperConfig.getSafeAllowanceModule(block.chainid) // allowance module address
                 ),
                 conditions: conditions
             })
@@ -364,17 +313,17 @@ contract PhysicalLayer is DeploySetup {
 
         // anybody: do ZKP check: age >= 18 
         mandateCount++;
-        conditions.allowedRole = type(uint256).max; // = public. anyone can pass the ZKP check to propose a legal Interfacer for the Physical Layer.
+        conditions.allowedRole = type(uint256).max; // = public. anyone can pass the ZKP check to propose a legal Interfacer for the Convergence Layer.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "ZK-Passport Check Age: Anyone over the age of 18 can propose to be a Steward for the Physical Layer",
+                nameDescription: "ZK-Passport Check Age: Anyone over the age of 18 can propose to be a Steward for the Convergence Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ZKPassport_Check"),
                 config: abi.encode(
                     inputParams,
                     helperConfig.getZkPassportRootRegistry(block.chainid), // the address of the ZK-Passport root registry contract, which is needed to verify the ZKPs. This is set in the helper config for each chain.
                     60 * 60 * 24 * 90, // the time window in which the ZKP proof needs to have been created. This is three months.
                     false, // facematch not required (for now) 
-                    ZKPassportHelper.isAgeAboveOrEqual.selector,  
+                    bytes4(keccak256("isAgeAboveOrEqual(uint8)")),  
                     abi.encode(uint8(18)) // the input for the zkp check (age > 18) 
                     ),
                 conditions: conditions
@@ -421,6 +370,7 @@ contract PhysicalLayer is DeploySetup {
         delete conditions;
 
         // Legal Interfacers: adopt peer select mandate to select Stewards from the pool of nominees. 
+        mandateCount++;
         PowersTypes.MandateInitData[] memory initData = new PowersTypes.MandateInitData[](1);
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
         conditions.succeedAt = 51; // = simple majority
@@ -575,6 +525,47 @@ contract PhysicalLayer is DeploySetup {
                 config: abi.encode(
                     indexFlows,
                     indexMandates
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // MISCELLANEOUS //
+        // UPDATE URI //
+        inputParams = new string[](1);
+        inputParams[0] = "string newUri"; 
+
+        // Stewards: Update URI
+        mandateCount++;
+        conditions.allowedRole = 2; // = Stewards
+        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
+        conditions.succeedAt = 66; // = 2/3 majority
+        conditions.quorum = 66; // = 66% quorum
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Update URI: Set allowed token for Convergence Layer",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
+                config: abi.encode(
+                    address(0), // target address is its own powers contract
+                    Powers.setUri.selector, // function selector to call
+                    inputParams
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // TRANSFER TOKENS INTO TREASURY //
+        mandateCount++;
+        conditions.allowedRole = 2; // = Stewards. Any Steward can call this mandate.
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the Layer can be recovered by sending them to the treasury",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_RecoverTokens"), // maybe functionality has to change slightly: have token to be transferred as input param. 
+                config: abi.encode(
+                    treasury, 
+                    helperConfig.getSafeAllowanceModule(block.chainid) // allowance module address
                 ),
                 conditions: conditions
             })

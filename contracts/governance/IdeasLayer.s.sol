@@ -8,8 +8,7 @@ import { DeploySetup } from "./DeploySetup.s.sol";
 import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";
 import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
 import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
-import { ElectionRegistry } from "@lib/powers-monorepo/solidity/src/helpers/ElectionRegistry.sol";
-import { ZKPassportHelper } from "@lib/circuits/src/solidity/src/ZKPassportHelper.sol";
+import { ElectionRegistry } from "@lib/powers-monorepo/solidity/src/helpers/ElectionRegistry.sol"; 
 import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol";
 import { PowersDeployer } from "@lib/powers-monorepo/solidity/src/helpers/PowersDeployer.sol";
 
@@ -47,9 +46,9 @@ contract IdeasLayer is DeploySetup {
         address electionRegistry, 
         address safeTreasury,
         uint16 requestParticipantpowersId,
-        uint16 requestNewPhysicalLayerId
+        uint16 requestNewConvergenceLayerId
     ) public {
-        _createConstitution(primaryLayer, electionRegistry, safeTreasury, requestParticipantpowersId, requestNewPhysicalLayerId);
+        _createConstitution(primaryLayer, electionRegistry, safeTreasury, requestParticipantpowersId, requestNewConvergenceLayerId);
         
         PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
         vm.startBroadcast();
@@ -74,7 +73,7 @@ contract IdeasLayer is DeploySetup {
         address electionRegistry,
         address safeTreasury,
         uint16 requestParticipantpowersId,
-        uint16 requestNewPhysicalLayerId
+        uint16 requestNewConvergenceLayerId
     ) internal {
         mandateCount = 4; // resetting mandate count.
 
@@ -168,14 +167,14 @@ contract IdeasLayer is DeploySetup {
         mandateIds[2] = mandateCount + 3;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Request new Physical Layer: This flow includes the initiation by Participants, veto by Assessors, and execution by Stewards to request the creation of a new Physical Layer.",
+            nameDescription: "Request new Convergence Layer: This flow includes the initiation by Participants, veto by Assessors, and execution by Stewards to request the creation of a new Convergence Layer.",
             mandateIds: mandateIds
         }));
 
         inputParams = new string[](1); // no input params, as all params are set in the config of the mandate.
-        inputParams[0] = "address Setup Initiator"; // the only input param is the new URI for the physical layer, which will be used by Stewards when requesting the creation of a new physical layer.
+        inputParams[0] = "address Setup Initiator"; // the only input param is the new URI for the convergence layer, which will be used by Stewards when requesting the creation of a new convergence layer.
 
-        // Participants: Initialise request for new physical layer.
+        // Participants: Initialise request for new convergence layer.
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // 5 minutes to vote
@@ -183,7 +182,7 @@ contract IdeasLayer is DeploySetup {
         conditions.quorum = 5; // low quorum. Many Participants might not be very active.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request new Physical Layer: Participants can initiate the request for creating a new Physical Layer under the Primary Layer.",
+                nameDescription: "Request new Convergence Layer: Participants can initiate the request for creating a new Convergence Layer under the Primary Layer.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -191,13 +190,13 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions; 
 
-        // Assessors: Veto request for new physical layer
+        // Assessors: Veto request for new convergence layer
         mandateCount++;
         conditions.allowedRole = 3; // = Assessors
-        conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled (Participants need to have initiated the request for a new physical layer).
+        conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled (Participants need to have initiated the request for a new convergence layer).
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Veto request for new Physical Layer: Assessors can veto the request for creating a new Physical Layer under the Primary Layer.",
+                nameDescription: "Veto request for new Convergence Layer: Assessors can veto the request for creating a new Convergence Layer under the Primary Layer.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -205,80 +204,30 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // Stewards: request at Primary Layer the creation of a new physical layer.
-        // Note: this is a statement of intent. Physical layers are requested using a working group, after initated here by Stewards.
+        // Stewards: request at Primary Layer the creation of a new convergence layer.
+        // Note: this is a statement of intent. Convergence layers are requested using a working group, after initated here by Stewards.
         mandateCount++;
         conditions.allowedRole = 2; // = Stewards
         conditions.quorum = 51; // simple majority
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // 10 minutes to vote
         conditions.succeedAt = 51; // simple majority
-        conditions.needFulfilled = mandateCount - 2; // need the Participants to have initiated the request for a new physical layer.
-        conditions.needNotFulfilled = mandateCount - 1; // need the Assessors to NOT have vetoed the request for a new physical layer.
+        conditions.needFulfilled = mandateCount - 2; // need the Participants to have initiated the request for a new convergence layer.
+        conditions.needNotFulfilled = mandateCount - 1; // need the Assessors to NOT have vetoed the request for a new convergence layer.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request new Physical Layer: Stewards can create a new Physical Layer.",
+                nameDescription: "Request new Convergence Layer: Stewards can create a new Convergence Layer.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode( 
                     primaryLayer,
-                    requestNewPhysicalLayerId, // parent mandate id (the create new physical layer at Primary Layer mandate)
-                    "Requesting creation of new Physical Layer from Primary Layer", // description
+                    requestNewConvergenceLayerId, // parent mandate id (the create new convergence layer at Primary Layer mandate)
+                    "Requesting creation of new Convergence Layer from Primary Layer", // description
                     inputParams
                 ),
                 conditions: conditions
             })
         );
         delete conditions;
-        // uint16 requestNewPhysicalLayerWorkingGroupMandateId = mandateCount;
-
-        // MISCELLANEOUS //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Miscellaneous powers: This flow includes updating the URI and recovering tokens sent to the Ideas Layer by mistake.",
-            mandateIds: mandateIds
-        }));
-
-        // UPDATE URI //
-        inputParams = new string[](1);
-        inputParams[0] = "string newUri";
-
-        // Stewards: Update URI
-        mandateCount++;
-        conditions.allowedRole = 2; // = Stewards
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 66; // = 2/3 majority
-        conditions.quorum = 66; // = 66% quorum
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Update URI: Set allowed token for Physical Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
-                config: abi.encode(
-                    address(0), // target address is its own powers contract
-                    Powers.setUri.selector, // function selector to call
-                    inputParams
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // TRANSFER TOKENS INTO TREASURY //
-        mandateCount++;
-        conditions.allowedRole = 2; // = Stewards. Any Steward can call this mandate.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the Ideas Layer can be recovered by sending them to the treasury",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_RecoverTokens"),
-                config: abi.encode(
-                    safeTreasury, // this should be the safe treasury!
-                    helperConfig.getSafeAllowanceModule(block.chainid) // allowance module address
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
+        // uint16 requestNewConvergenceLayerWorkingGroupMandateId = mandateCount;
 
         // REVOKE PARTICIPANT //
         mandateIds = new uint16[](2);
@@ -499,10 +448,8 @@ contract IdeasLayer is DeploySetup {
             mandateIds: mandateIds
         }));
 
-        inputParams = new string[](3);
-        inputParams[0] = "string Title";
-        inputParams[1] = "uint48 StartBlock";
-        inputParams[2] = "uint48 EndBlock";
+        inputParams = new string[](1);
+        inputParams[0] = "string Title"; 
 
         // Participants: create election
         mandateCount++;
@@ -656,5 +603,47 @@ contract IdeasLayer is DeploySetup {
             })
         );
         delete conditions;
+
+        // MISCELLANEOUS (NOT IN A FLOW) //
+        // UPDATE URI //
+        inputParams = new string[](1);
+        inputParams[0] = "string newUri";
+
+        // Stewards: Update URI
+        mandateCount++;
+        conditions.allowedRole = 2; // = Stewards
+        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
+        conditions.succeedAt = 66; // = 2/3 majority
+        conditions.quorum = 66; // = 66% quorum
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Update URI: Set allowed token for Convergence Layer",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
+                config: abi.encode(
+                    address(0), // target address is its own powers contract
+                    Powers.setUri.selector, // function selector to call
+                    inputParams
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // TRANSFER TOKENS INTO TREASURY //
+        mandateCount++;
+        conditions.allowedRole = 2; // = Stewards. Any Steward can call this mandate.
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Transfer tokens to treasury: Any tokens accidently sent to the Ideas Layer can be recovered by sending them to the treasury",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_RecoverTokens"),
+                config: abi.encode(
+                    safeTreasury, // this should be the safe treasury!
+                    helperConfig.getSafeAllowanceModule(block.chainid) // allowance module address
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
     }
 }

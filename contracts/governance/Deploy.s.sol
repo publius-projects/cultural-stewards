@@ -18,12 +18,13 @@ import { Nominees } from "@lib/powers-monorepo/solidity/src/helpers/Nominees.sol
 import { ElectionRegistry } from "@lib/powers-monorepo/solidity/src/helpers/ElectionRegistry.sol";
 import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol"; 
 import { PowersDeployer } from "@lib/powers-monorepo/solidity/src/helpers/PowersDeployer.sol";
+import { PowersPaymaster } from "@lib/powers-monorepo/solidity/src/helpers/PowersPaymaster.sol";
 
 import { Helpers } from "./Helpers.s.sol";
 import { PrimaryLayer } from "./PrimaryLayer.s.sol";
 import { DigitalLayer } from "./DigitalLayer.s.sol";
 import { IdeasLayer } from "./IdeasLayer.s.sol";
-import { PhysicalLayer } from "./PhysicalLayer.s.sol";
+import { ConvergenceLayer } from "./ConvergenceLayer.s.sol";
 
 /// @title Cultural Stewards DAO - Deployment Script
 /// Note: all days are turned into minutes for testing purposes. These should be changed before production deployment: ctrl-f minutesToBlocks -> daysToBlocks.
@@ -31,7 +32,7 @@ contract Deploy is Script {
     PrimaryLayer primaryLayer;
     DigitalLayer digitalLayer;
     IdeasLayer ideasLayerFactory;
-    PhysicalLayer physicalLayerFactory;
+    ConvergenceLayer convergenceLayerFactory;
     Helpers helpers; 
     
     function run() external { 
@@ -39,21 +40,21 @@ contract Deploy is Script {
         primaryLayer = new PrimaryLayer();
         digitalLayer = new DigitalLayer();
         ideasLayerFactory = new IdeasLayer();
-        physicalLayerFactory = new PhysicalLayer();
+        convergenceLayerFactory = new ConvergenceLayer();
         helpers = new Helpers();
 
         // deploying the core Powers and Powers factory instances: 
         primaryLayer.run();
         digitalLayer.run();
         ideasLayerFactory.run();
-        physicalLayerFactory.run();
+        convergenceLayerFactory.run();
         helpers.run();
 
         // constituting the powers instances and powers factories. 
         primaryLayer.constitutePowers(
             digitalLayer.getAddress(),
             ideasLayerFactory.getAddress(),
-            physicalLayerFactory.getAddress(),
+            convergenceLayerFactory.getAddress(),
             helpers.getActivityToken(),
             helpers.getElectionRegistry()
         );
@@ -67,15 +68,15 @@ contract Deploy is Script {
             helpers.getElectionRegistry(),
             primaryLayer.getTreasury(),
             primaryLayer.requestParticipantpowersId(),
-            primaryLayer.requestNewPhysicalLayerId()
+            primaryLayer.requestNewConvergenceLayerId()
         );
-        physicalLayerFactory.constitutePowers(
+        convergenceLayerFactory.constitutePowers(
             primaryLayer.getAddress(),
             helpers.getGoverned721(),
             helpers.getActivityToken(),
             helpers.getNominees(),
             primaryLayer.mintPoapTokenId(),
-            primaryLayer.requestAllowancePhysicalLayerId()
+            primaryLayer.requestAllowanceConvergenceLayerId()
 
         );
 

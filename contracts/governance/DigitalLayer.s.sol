@@ -248,7 +248,7 @@ contract DigitalLayer is DeploySetup {
         conditions.quorum = 66; // = 66% quorum
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Update URI: Set allowed token for Physical Layer",
+                nameDescription: "Update URI: Set allowed token for Convergence Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     address(powers), // target address is its own powers contract
@@ -397,10 +397,8 @@ contract DigitalLayer is DeploySetup {
             mandateIds: mandateIds
         }));
 
-        inputParams = new string[](3);
-        inputParams[0] = "string Title";
-        inputParams[1] = "uint48 StartBlock";
-        inputParams[2] = "uint48 EndBlock";
+        inputParams = new string[](1);
+        inputParams[0] = "string Title"; 
 
         // Writers: create election
         mandateCount++;
