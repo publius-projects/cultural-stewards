@@ -11,6 +11,7 @@ import { Safe } from "@lib/safe-smart-account/contracts/Safe.sol";
 
 import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";
 import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
+import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
 
 import { Soulbound1155 } from "@lib/powers-monorepo/solidity/src/helpers/Soulbound1155.sol";
 import { Governed721 } from "@lib/powers-monorepo/solidity/src/helpers/Governed721.sol";
@@ -21,6 +22,7 @@ import { PowersDeployer } from "@lib/powers-monorepo/solidity/src/helpers/Powers
 import { PowersPaymaster } from "@lib/powers-monorepo/solidity/src/helpers/PowersPaymaster.sol";
 
 import { Helpers } from "./Helpers.s.sol";
+import { InitialiseOrganisation } from "./actions/InitialiseOrganisation.s.sol";
 import { PrimaryLayer } from "./PrimaryLayer.s.sol";
 import { DigitalLayer } from "./DigitalLayer.s.sol";
 import { IdeasLayer } from "./IdeasLayer.s.sol";
@@ -34,29 +36,39 @@ contract Deploy is Script {
     IdeasLayer ideasLayerFactory;
     ConvergenceLayer convergenceLayerFactory;
     Helpers helpers; 
+    InitialiseOrganisation initialise;
+
+    string[] public ideasLayerNames = ["Seeing", "Making", "Listening", "Telling", "Remembering", "Imagining", "Tending"];
     
     function run() external { 
-        // step 0, setup. 
+        // step 1, setup. 
         primaryLayer = new PrimaryLayer();
         digitalLayer = new DigitalLayer();
         ideasLayerFactory = new IdeasLayer();
         convergenceLayerFactory = new ConvergenceLayer();
         helpers = new Helpers();
+        initialise = new InitialiseOrganisation();
 
-        // deploying the core Powers and Powers factory instances: 
+        uint256[] memory privateKeys = new uint256[](3);
+        privateKeys[0] = vm.envUint("TEST_ACCOUNT_KEY_1");
+        privateKeys[1] = vm.envUint("TEST_ACCOUNT_KEY_2");
+        privateKeys[2] = vm.envUint("TEST_ACCOUNT_KEY_3");
+
+        // step 2, deploying the core Powers and Powers factory instances: 
         primaryLayer.run();
         digitalLayer.run();
         ideasLayerFactory.run();
         convergenceLayerFactory.run();
         helpers.run();
 
-        // constituting the powers instances and powers factories. 
+        // step 3, constituting the powers instances and powers factories. 
         primaryLayer.constitutePowers(
             digitalLayer.getAddress(),
             ideasLayerFactory.getAddress(),
             convergenceLayerFactory.getAddress(),
             helpers.getActivityToken(),
-            helpers.getElectionRegistry()
+            helpers.getElectionRegistry(),
+            digitalLayer.getAssignConvergenceLayer()
         );
         digitalLayer.constitutePowers(
             primaryLayer.getAddress(),
@@ -80,14 +92,33 @@ contract Deploy is Script {
 
         );
 
-        // step 5: transfer ownership of factories to primary DAO.
+        // step 4: transfer ownership of factories to Primary Layer.
         vm.startBroadcast();
-        console2.log("Transferring ownership of DAO factories to Primary Layer...");
+        console2.log("Transferring ownership of Organisational factories to Primary Layer...");
         Soulbound1155(helpers.getActivityToken()).transferOwnership(primaryLayer.getAddress());
         Governed721(helpers.getGoverned721()).transferOwnership(primaryLayer.getAddress());
         Nominees(helpers.getNominees()).transferOwnership(primaryLayer.getAddress());
-        
         vm.stopBroadcast();
+
+        // SETUP // 
+        
+        // step 5a: run setup on primary and digital layer.
+        initialise.runSetupMandate(primaryLayer.getAddress(), block.timestamp);
+        initialise.runSetupMandate(digitalLayer.getAddress(), block.timestamp);
+
+        // step 5b: create multiple ideas layers for different domains of the organisation + unpack reform packages in these layers.
+        for (uint i = 0; i < ideasLayerNames.length; i++) {
+            initialise.deployIdeasLayer(primaryLayer.getAddress(), block.timestamp + i, privateKeys);
+            address ideasLayer = Powers(payable(primaryLayer.getAddress())).getRoleHolderAtIndex(4, i);
+            initialise.unpackReformPackages(ideasLayer, block.timestamp + i);
+        }
+
+        // step 5d: create a convergence layer + unpack reform package in this layer. 
+        // retrieve ideas layer address.. 
+        address ideasLayerAddress = Powers(payable(primaryLayer.getAddress())).getRoleHolderAtIndex(4, 0);
+        initialise.deployConvergenceLayer(ideasLayerAddress, primaryLayer.getAddress(), block.timestamp + 100, privateKeys);
+        address convergenceLayer = Powers(payable(primaryLayer.getAddress())).getRoleHolderAtIndex(3, 0);
+        initialise.unpackReformPackages(convergenceLayer, block.timestamp + 100);
 
         console2.log("Success! All contracts successfully deployed, unpacked and configured.");
     }

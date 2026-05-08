@@ -30,6 +30,11 @@ contract PrimaryLayer is DeploySetup {
     uint16 public mintPoapTokenId;
     uint16 public requestParticipantpowersId;
 
+    uint256 i; 
+    uint256 j; 
+    uint256 packageLength;
+    bytes signature;
+
     //////////////////////////////////////////////////////////////////////
     //                        INITIALISATION                            //
     //////////////////////////////////////////////////////////////////////
@@ -79,6 +84,7 @@ contract PrimaryLayer is DeploySetup {
             IEntryPoint(0x0000000071727De22E5E9d8BAf0edAc6f37da032),  // for now hard coded, should be taken from config file later on. 
             address(powers))); 
         vm.stopBroadcast();
+        console2.log("Paymaster deployed at:", paymaster);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -89,14 +95,15 @@ contract PrimaryLayer is DeploySetup {
         address ideasLayerFactory, 
         address convergenceLayerFactory, 
         address activityToken,
-        address electionRegistry
+        address electionRegistry, 
+        uint16 assignConvergenceLayerMandateId
         ) public { // add here dependencies. 
-        _createConstitution(digitalLayer, ideasLayerFactory, convergenceLayerFactory, activityToken, electionRegistry);
+        _createConstitution(digitalLayer, ideasLayerFactory, convergenceLayerFactory, activityToken, electionRegistry, assignConvergenceLayerMandateId);
          
-        for (uint256 i = 0; i < constitution.length; i += PACKAGE_SIZE) {
-            uint256 packageLength = constitution.length - i < PACKAGE_SIZE ? constitution.length - i : PACKAGE_SIZE;
+        for (i = 0; i < constitution.length; i += PACKAGE_SIZE) {
+            packageLength = constitution.length - i < PACKAGE_SIZE ? constitution.length - i : PACKAGE_SIZE;
             PowersTypes.MandateInitData[] memory constitutionPart = new PowersTypes.MandateInitData[](packageLength);
-            for (uint256 j = 0; j < constitutionPart.length; j++) {
+            for (j = 0; j < constitutionPart.length; j++) {
                 constitutionPart[j] = constitution[i + j];
             }
             vm.startBroadcast();
@@ -105,7 +112,7 @@ contract PrimaryLayer is DeploySetup {
         } 
         vm.startBroadcast();
         powers.closeConstitute(cedars, flows); // set msg.sender as admin);
-        vm.stopBroadcast();
+        vm.stopBroadcast();        
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -127,7 +134,8 @@ contract PrimaryLayer is DeploySetup {
         address ideasLayerFactory, 
         address convergenceLayerFactory, 
         address activityToken,
-        address electionRegistry
+        address electionRegistry, 
+        uint16 assignConvergenceLayerMandateId
         ) internal {
         mandateCount = 0;
         
@@ -136,7 +144,7 @@ contract PrimaryLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
         // setup calls //
         // signature for Safe module enabling call
-        bytes memory signature = abi.encodePacked(
+        signature = abi.encodePacked(
             uint256(uint160(address(powers))), // r = address of the signer (powers contract)
             uint256(0), // s = 0
             uint8(1) // v = 1 This is a type 1 call. See Safe.sol for details.
@@ -146,7 +154,7 @@ contract PrimaryLayer is DeploySetup {
         values = new uint256[](19);
         calldatas = new bytes[](19);
 
-        for (uint256 i = 0; i < 19; i++) {
+        for (i = 0; i < 19; i++) {
             targets[i] = address(powers); // all calls have value 0 in this mandate. To transfer Eth, use a different mandate.
         }
         targets[14] = treasury; // override target for treasury setup call.
@@ -210,7 +218,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.allowedRole = type(uint256).max; // = public.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Initial Setup: Assigns role labels, sets up the allowance module, the treasury and revokes itself after execution",
+                nameDescription: "Initial Setup: Assign role labels and revokes itself after execution",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PresetActions"),
                 config: abi.encode(
                     targets,
@@ -225,193 +233,8 @@ contract PrimaryLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
         //                      EXECUTIVE MANDATES                          //
         //////////////////////////////////////////////////////////////////////
-        // INIT IDEAS AND PRIMARY LAYER - REMOVE AFTER INITIAL USE // 
-        // Ideas Layer //
-        uint16[] memory mandateIds = new uint16[](8);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
-        mandateIds[2] = mandateCount + 3; 
-        mandateIds[3] = mandateCount + 4;
-        mandateIds[4] = mandateCount + 5;
-        mandateIds[5] = mandateCount + 6;
-        mandateIds[6] = mandateCount + 7;
-        mandateIds[7] = mandateCount + 8;
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Create an Ideas and Convergence Layer: This flow is intended to be used by the admin to quickly set up a ideas and convergence layer to Cultural Stewards",
-            mandateIds: mandateIds
-        }));
-
-        // Admin: Execute Ideas Layer creation
-        mandateCount++;  
-        conditions.allowedRole = 0; // = Admin
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Create Ideas Layer: Execute Ideas Layer creation",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
-                config: abi.encode(
-                    address(ideasLayerFactory), // calling the ideas factory
-                    bytes4(keccak256("createPowers()")),
-                    abi.encode()  
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Admin: Assign role Id to Ideas Layer //
-        mandateCount++;
-        conditions.allowedRole = 0; // = Admin
-        conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Assign role Id to layer: Assign role id 4 (Ideas Layer) to the new layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_OnReturnValue"),
-                config: abi.encode(
-                    address(powers), // target contract
-                    IPowers.assignRole.selector, // function selector to call
-                    abi.encode(4), // params before (role id 4 = Ideas Layers)
-                    abi.encode(), // dynamic params (the input params of the parent mandate)
-                    mandateCount - 1, // parent mandate id (the create Ideas Layer mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Admin: Register Ideas layer to paymaster //
-        mandateCount++;
-        conditions.allowedRole = 0; // = Admin
-        conditions.needFulfilled = mandateCount - 2; // Need ideas layer to have been deployed.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Register Ideas Layer to Paymaster: Register the new Ideas Layer to the paymaster as a sponsored target, this means gas cost for interacting with the new Ideas Layer can be sponsored by the paymaster",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_OnReturnValue"),
-                config: abi.encode(
-                    paymaster, // target contract
-                    bytes4(keccak256("addSponsoredTarget(address)")), // function selector to call
-                    abi.encode(), // params before (role id 4 = Ideas Layers)
-                    abi.encode(), // dynamic params (the input params of the parent mandate)
-                    mandateCount - 2, // parent mandate id (the create Ideas Layer mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // setting up convergence layer 
-        // note: an allowance is set when LAYER is created.
-        inputParams = new string[](1); 
-        inputParams[0] = "address Initiator"; // the address of the admin of the new LAYER
-
-        // Admin: Execute Convergence Layer creation
-        mandateCount++; 
-        conditions.allowedRole = 0; // = Admin 
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Create Convergence Layer: Execute Convergence Layer creation",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
-                config: abi.encode(
-                    address(convergenceLayerFactory), // calling the Convergence factory 
-                    bytes4(keccak256("createPowers(address)")), // function selector for createPowers (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
-                    inputParams // address as input param 
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Admin: Assign role Id to Convergence Layer //
-        mandateCount++;
-        conditions.allowedRole = 0; // = Admin
-        conditions.needFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Assign role Id: Assign role Id 3 to Convergence Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_OnReturnValue"),
-                config: abi.encode(
-                    address(powers), // target contract
-                    IPowers.assignRole.selector, // function selector to call
-                    abi.encode(uint16(3)), // params before (role id 3 = Convergence Layers)
-                    inputParams, // dynamic params (the input params of the parent mandate)
-                    mandateCount - 1, // parent mandate id (the create Convergence Layer mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // Admin: Assign Delegate status to Convergence Layer //
-        mandateCount++;
-        conditions.allowedRole = 0; // = Admin
-        conditions.needFulfilled = mandateCount - 2; // need the Convergence Layer to have been created.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Assign Delegate status: Assign delegate status at Safe treasury to the Convergence Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Safe_ExecTransaction_OnReturnValue"),
-                config: abi.encode(
-                    helperConfig.getSafeAllowanceModule(block.chainid), // target contract
-                    bytes4(0xe71bdf41), // == AllowanceModule.addDelegate.selector (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
-                    abi.encode(), // params before (role id 3 = Convergence Layers)
-                    inputParams, // dynamic params (the input params of the parent mandate)
-                    mandateCount - 2, // parent mandate id (the create Convergence Layer mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions; 
-
-        // Admin: Register Convergence layer to paymaster //
-        mandateCount++;
-        conditions.allowedRole = 0; // = Admin
-        conditions.needFulfilled = mandateCount - 3; // Need convergence layer to have been deployed.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "Register Convergence Layer to Paymaster: Register the new Convergence Layer to the paymaster as a sponsored target, this means gas cost for interacting with the new Convergence Layer can be sponsored by the paymaster",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_OnReturnValue"),
-                config: abi.encode(
-                    paymaster, // target contract
-                    bytes4(keccak256("addSponsoredTarget(address)")), // function selector to call
-                    abi.encode(), // params before  
-                    abi.encode(), // dynamic params (the input params of the parent mandate)
-                    mandateCount - 3, // parent mandate id (the create Convergence Layer mandate)
-                    abi.encode() // no params after
-                ),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
-        // revoke mandates: 
-        calldatas = new bytes[](9);
-        calldatas[0] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount - 6); 
-        calldatas[1] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount - 5); 
-        calldatas[2] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount - 4); 
-        calldatas[3] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount - 3); 
-        calldatas[4] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount - 2); 
-        calldatas[5] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount - 1); 
-        calldatas[6] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount); 
-        calldatas[7] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); 
-
-        calldatas[8] = abi.encodeWithSelector(IPowers.removeFlow.selector, 0);
-        mandateCount++;
-        conditions.allowedRole = type(uint256).max; // = public.
-        constitution.push(
-            PowersTypes.MandateInitData({
-                nameDescription: "REVOKE FLOW",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PresetActions_OnOwnPowers"),
-                config: abi.encode(calldatas),
-                conditions: conditions
-            })
-        );
-        delete conditions;
-
         // CREATE IDEAS LAYER //
-        mandateIds = new uint16[](7);
+        uint16[] memory mandateIds = new uint16[](7);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
         mandateIds[2] = mandateCount + 3; 
@@ -421,7 +244,7 @@ contract PrimaryLayer is DeploySetup {
         mandateIds[6] = mandateCount + 7;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Create an Ideas Layer: This flow includes the initiation and execution of the Ideas Layer creation, as well as the assigning of the role id to the new layer. This flow can be triggered by any Steward. It also includes the revoking of an Ideas layer.",
+            nameDescription: "Create and Revoke Ideas Layers: This flow includes the initiation and execution of the Ideas Layer creation, as well as the assigning of the role id to the new layer. This flow can be triggered by any Participant. It also includes the revoking of an Ideas layer.",
             mandateIds: mandateIds
         }));
 
@@ -489,7 +312,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 2; // Need ideas layer to have been deployed.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Register Ideas Layer to Paymaster: Register the new Ideas Layer to the paymaster as a sponsored target, this means gas cost for interacting with the new Ideas Layer can be sponsored by the paymaster",
+                nameDescription: "Register Ideas Layer to Paymaster: Register the new Ideas Layer to the paymaster as a sponsored target",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_OnReturnValue"),
                 config: abi.encode(
                     paymaster, // target contract
@@ -541,7 +364,7 @@ contract PrimaryLayer is DeploySetup {
                     address(powers), // target contract
                     IPowers.revokeRole.selector, // function selector to call
                     abi.encode(4), // params before (role id 4 = Ideas Layers) // the static params
-                    abi.encode(inputParams), // the dynamic params (the input params of the parent mandate)
+                    inputParams, // the dynamic params (the input params of the parent mandate)
                     abi.encode() // no args after
                 ),
                 conditions: conditions
@@ -561,7 +384,7 @@ contract PrimaryLayer is DeploySetup {
                     paymaster, // target contract
                     bytes4(keccak256("removeSponsoredTarget(address)")), // function selector to call
                     abi.encode(), // params before (role id 4 = Ideas Layers)
-                    abi.encode(inputParams), // dynamic params (the input params of the parent mandate)
+                    inputParams, // dynamic params (the input params of the parent mandate)
                     abi.encode() // no params after
                 ),
                 conditions: conditions
@@ -569,13 +392,14 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-        // CREATE PHYSICAL LAYER // 
-        mandateIds = new uint16[](5);
+        // CREATE CONVERGENCE LAYER // 
+        mandateIds = new uint16[](6);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
         mandateIds[2] = mandateCount + 3;
         mandateIds[3] = mandateCount + 4;
         mandateIds[4] = mandateCount + 5;
+        mandateIds[5] = mandateCount + 6;
 
         flows.push(PowersTypes.Flow({
             nameDescription: "Create a Convergence Layer: This flow includes the initiation and execution of the Convergence Layer creation, as well as the assigning of the role id to the new layer and the assigning of delegate status to the new layer for the Safe treasury. This flow can only be triggered by an Ideas Layer.",
@@ -609,10 +433,10 @@ contract PrimaryLayer is DeploySetup {
         mandateCount++; 
         conditions.allowedRole = 4; // = (a single) Ideas Layer
         conditions.timelock = minutesToBlocks(10, helperConfig.getBlocksPerHour(block.chainid)); // = 10 minutes / days. Note: timelock allows for veto to be cast. 
-        conditions.needNotFulfilled = mandateCount - 1; // need the previous mandate to be fulfilled.
+        conditions.needNotFulfilled = mandateCount - 1; // need the previous mandate NOT to be fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Create Convergence Layer: Ideas Layers can create a Convergence Layer.",
+                nameDescription: "Create Convergence Layer: Ideas Layers can create a Convergence Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     address(convergenceLayerFactory), // calling the Convergence factory 
@@ -678,7 +502,7 @@ contract PrimaryLayer is DeploySetup {
                     paymaster, // target contract
                     bytes4(keccak256("addSponsoredTarget(address)")), // function selector to call
                     abi.encode(), // params before  
-                    abi.encode(), // dynamic params (the input params of the parent mandate)
+                    inputParams, // dynamic params (the input params of the parent mandate)
                     mandateCount - 3, // parent mandate id (the create Convergence Layer mandate)
                     abi.encode() // no params after
                 ),
@@ -687,7 +511,33 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-        // REVOKE PHYSICAL LAYER //
+        // Primary Steward: assign convergence role ID to new layer at digital layer.   //
+        mandateCount++;
+        conditions.allowedRole = 2; // = Primary Steward
+        conditions.needFulfilled = mandateCount - 3; // Need convergence layer to have been deployed.
+        constitution.push(
+            PowersTypes.MandateInitData({
+                nameDescription: "Assign Convergence Layer to Digital Layer: Assign the new Convergence Layer as a sponsored target to the Digital Layer, this means that the Convergence Layer can call functions on the Digital Layer with the paymaster sponsoring the gas cost.",
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_OnReturnValue"),
+                config: abi.encode(
+                    digitalLayer, // target contract
+                    bytes4(keccak256("request(uint16,bytes,uint256,string)")), // function selector to call
+                    abi.encode(assignConvergenceLayerMandateId), // params before  
+                    inputParams, // dynamic params (the input params of the parent mandate)
+                    mandateCount - 4, // parent mandate id (the create Convergence Layer mandate)
+                    abi.encode(
+                        1234, // nonce. 
+                        "Assigning new Convergence Layer as a sponsored target to the Digital Layer"
+                    ) // params after
+                ),
+                conditions: conditions
+            })
+        );
+        delete conditions;
+
+        // 
+
+        // REVOKE CONVERGENCE LAYER //
         mandateIds = new uint16[](4);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -743,7 +593,7 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-        // Primary Steward: Revoke Convergence Layer (Revoke Delegate status LAYER) //
+        // Primary Steward: Revoke Convergence Layer (Revoke Delegate status) //
         mandateCount++;
         conditions.allowedRole = 2; // = Primary Steward
         conditions.needFulfilled = mandateCount - 1; // need the assign role to have been fulfilled.
@@ -773,7 +623,7 @@ contract PrimaryLayer is DeploySetup {
                     paymaster, // target contract
                     bytes4(keccak256("removeSponsoredTarget(address)")), // function selector to call
                     abi.encode(), // params before (role id 4 = Ideas Layers)
-                    abi.encode(inputParams), // dynamic params (the input params of the parent mandate)
+                    inputParams, // dynamic params (the input params of the parent mandate)
                     abi.encode() // no params after
                 ),
                 conditions: conditions
@@ -782,7 +632,7 @@ contract PrimaryLayer is DeploySetup {
         delete conditions;
 
 
-        // ASSIGN LEGAL REPRESENTATIVE ROLE TO PHYSICAL SUB-LAYER //
+        // ASSIGN LEGAL REPRESENTATIVE ROLE TO CONVERGENCE SUB-LAYER //
         mandateIds = new uint16[](4);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -875,7 +725,7 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-        // ASSIGN ADDITIONAL ALLOWANCE TO PHYSICAL LAYER //
+        // ASSIGN ADDITIONAL ALLOWANCE TO CONVERGENCE LAYER //
         mandateIds = new uint16[](3);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -1070,12 +920,14 @@ contract PrimaryLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
 
         // CLAIM Participant PRIMARY LAYER // -- on the basis of request at ideas LAYER and POAP ownership.
-        mandateIds = new uint16[](2);
+        mandateIds = new uint16[](4);
         mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2; 
+        mandateIds[1] = mandateCount + 2;
+        mandateIds[2] = mandateCount + 3;
+        mandateIds[3] = mandateCount + 4; 
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Claim Participant Primary Layer: This flow includes the claiming of Participant in the Primary Layer based on a request from an Ideas Layer and the ownership of POAP tokens from the Convergence Layer. Any Participant of an Ideas Layer can trigger this flow, but it requires the ownership of at least 1 POAP token from the Convergence Layer that is not older than 6 months, so effectively only active Participants of the Convergence Layer can claim Participant in the Primary Layer.",
+            nameDescription: "Claim  and revoke Participant Primary Layer: This flow includes the claiming and revoking of the Participant role at the Primary Layer. To claim the Participant role, an address needs to first express their intent at an Ideas Layer and own a specific POAP that is issued for example during an event organized by the community. The revoking of the Participant role can only be done by the Primary Steward, but it requires a veto from the Participants.",
             mandateIds: mandateIds
         }));
 
@@ -1114,16 +966,6 @@ contract PrimaryLayer is DeploySetup {
             })
         );
         delete conditions;
-
-        // REVOKE PARTICIPANT ROLE //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2; 
-
-        flows.push(PowersTypes.Flow({
-            nameDescription: "Revoke Participant: This flow includes the revoking of Participant in the Primary Layer based on a request from an Ideas Layer and the ownership of POAP tokens from the Convergence Layer. Any Participant of an Ideas Layer can trigger this flow, but it requires the ownership of at least 1 POAP token from the Convergence Layer that is not older than 6 months, so effectively only active Participants of the Convergence Layer can revoke Participant in the Primary Layer.",
-            mandateIds: mandateIds
-        }));
 
         inputParams = new string[](1);
         inputParams[0] = "address ParticipantAddress";
@@ -1192,7 +1034,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.throttleExecution = minutesToBlocks(7, helperConfig.getBlocksPerHour(block.chainid)); // = once every 7 minutes
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Create an Steward election: an election for the Steward role can be initiated be any Participant.",
+                nameDescription: "Create an Steward election: an election for the Steward role can be initiated be any Participant. After the election is created, participants have 5 minutes to nominate themselves.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     electionRegistry, // election list contract
@@ -1210,7 +1052,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 1; // = Create election
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Open voting for Steward election: Participants can open the vote for an Steward election. This will create a dedicated vote mandate.",
+                nameDescription: "Open voting for Steward election: After five minutes of initiating an election, participants can open the vote. This will create a dedicated vote mandate. The vote will stay open for five minutes.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_CreateVoteMandate"),
                 config: abi.encode(
                     electionRegistry, // election list contract
@@ -1229,7 +1071,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 1; // = Open Vote election
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Tally Steward elections: After an Steward election has finished, assign the Steward role to the winners.",
+                nameDescription: "Tally Steward elections: After five minutes of opening the vote, tally the results and assign the Steward role to the winners.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_Tally"),
                 config: abi.encode(
                     electionRegistry,
@@ -1497,7 +1339,7 @@ contract PrimaryLayer is DeploySetup {
         );
         delete conditions;
 
-        // MINT NFTs FOR PHYSICAL SUB-LAYER // 
+        // MINT NFTs FOR CONVERGENCE SUB-LAYER // 
         mandateCount++;
         conditions.allowedRole = 3; // = Convergence Layers
         constitution.push(

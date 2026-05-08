@@ -124,7 +124,7 @@ contract IdeasLayer is DeploySetup {
 
         // public: apply for Participant
         inputParams = new string[](2);
-        inputParams[0] = "address ApplicantAddress";
+        inputParams[0] = "address Applicant";
         inputParams[1] = "string ApplicationURI";
 
         mandateCount++;
@@ -152,7 +152,7 @@ contract IdeasLayer is DeploySetup {
                     address(0),
                     IPowers.assignRole.selector, // function selector to call
                     abi.encode(1), // params before (role id 1 = Participants) // the static params
-                    inputParams, // the dynamic params (the input params of the parent mandate) -- NB: not that any excess data at the END OF CALLDATA is ignored. hence we can add the uri - it will not be taken into consideration. 
+                    inputParams, 
                     abi.encode() // no args after
                 ),
                 conditions: conditions
@@ -160,7 +160,7 @@ contract IdeasLayer is DeploySetup {
         );
         delete conditions;
 
-        // REQUEST CREATION NEW PHYSICAL Layer //
+        // REQUEST CREATION NEW CONVERGENCE Layer //
         mandateIds = new uint16[](3);
         mandateIds[0] = mandateCount + 1;
         mandateIds[1] = mandateCount + 2;
@@ -182,7 +182,7 @@ contract IdeasLayer is DeploySetup {
         conditions.quorum = 5; // low quorum. Many Participants might not be very active.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request new Convergence Layer: Participants can initiate the request for creating a new Convergence Layer under the Primary Layer.",
+                nameDescription: "Request new Convergence Layer: Participants can initiate the request for creating a new Convergence Layer under the Primary Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
                 config: abi.encode(inputParams),
                 conditions: conditions
@@ -215,7 +215,7 @@ contract IdeasLayer is DeploySetup {
         conditions.needNotFulfilled = mandateCount - 1; // need the Assessors to NOT have vetoed the request for a new convergence layer.
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Request new Convergence Layer: Stewards can create a new Convergence Layer.",
+                nameDescription: "Send request: Stewards can send the request to create a new Convergence Layer to the Primary Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode( 
                     primaryLayer,
@@ -457,7 +457,7 @@ contract IdeasLayer is DeploySetup {
         conditions.throttleExecution = minutesToBlocks(120, helperConfig.getBlocksPerHour(block.chainid)); // = once every 2 hours
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Create a Steward election: an election for the Steward role can be initiated by any Participant.",
+                nameDescription: "Create a Steward election: an election for the Steward role can be initiated by any Participant. The election will be open for 5 minutes.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     electionRegistry, // election list contract
@@ -475,7 +475,7 @@ contract IdeasLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 1; // = Create Steward election
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Open voting for Steward election: Participants can open the vote for a Steward election. This will create a dedicated vote mandate.",
+                nameDescription: "Open voting for Steward election: After five minutes of initiating an election, Participants can open the vote for a Steward election. This will create a dedicated vote mandate.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_CreateVoteMandate"),
                 config: abi.encode(
                     electionRegistry, // election list contract
@@ -494,7 +494,7 @@ contract IdeasLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 1; // = Open Vote election
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Tally Steward elections: After a Steward election has finished, assign the Steward role to the winners.",
+                nameDescription: "Tally Steward elections: After five minutes of opening the vote, tally the results and assign the Steward role to the winners.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_Tally"),
                 config: abi.encode(
                     electionRegistry,
@@ -512,7 +512,7 @@ contract IdeasLayer is DeploySetup {
         conditions.needFulfilled = mandateCount - 1; // = Tally Steward election
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Clean up Steward election: After a Steward election has finished, clean up related mandates.",
+                nameDescription: "Clean up Steward election: After five minutes of tallying the results, clean up related mandates.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ElectionRegistry_CleanUpVoteMandate"),
                 config: abi.encode(uint16(mandateCount - 2)), // The create vote mandate)
                 conditions: conditions

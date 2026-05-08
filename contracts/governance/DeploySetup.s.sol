@@ -38,7 +38,7 @@ abstract contract DeploySetup is DeployHelpers {
     // The mandate version to be used. 
     uint16 constant MAJOR = 0;
     uint16 constant MINOR = 1;
-    uint16 constant PATCH = 1;
+    uint16 constant PATCH = 2;
 
     uint16 constant PACKAGE_SIZE = 7;  
 }

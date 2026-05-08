@@ -8,7 +8,7 @@ import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
 import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
 import { Governed721 } from "@lib/powers-monorepo/solidity/src/helpers/Governed721.sol";
 import { Nominees } from "@lib/powers-monorepo/solidity/src/helpers/Nominees.sol"; 
-import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol";
+import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol"; 
 import { PowersDeployer } from "@lib/powers-monorepo/solidity/src/helpers/PowersDeployer.sol";
 
 contract ConvergenceLayer is DeploySetup {
@@ -30,7 +30,7 @@ contract ConvergenceLayer is DeploySetup {
         PowersDeployer ConvergenceLayerDeployer = new PowersDeployer();  // £todo: I think this can be deployed as a singleton contract
         powersFactory = new PowersFactory(
             "Convergence Layer", // name
-            string.concat(baseURI, "convergenceLayer.json"), // uri
+            string.concat(baseURI, "physicalLayer.json"), // uri
             helperConfig.getMaxCallDataLength(block.chainid), // max call data length
             helperConfig.getMaxReturnDataLength(block.chainid), // max return data length
             helperConfig.getMaxExecutionsLength(block.chainid), // max executions length 
@@ -255,7 +255,7 @@ contract ConvergenceLayer is DeploySetup {
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
                 config: abi.encode(
                     address(primaryLayer),
-                    uint16(mintPoapTokenId), // parent mandate id (the mint POAP token at primary DAO mandate)
+                    uint16(mintPoapTokenId), // parent mandate id (the mint POAP token at Primary Layer mandate)
                     "Requesting minting of POAP from Primary Layer",
                     inputParams
                 ),
@@ -371,11 +371,11 @@ contract ConvergenceLayer is DeploySetup {
 
         // Legal Interfacers: adopt peer select mandate to select Stewards from the pool of nominees. 
         mandateCount++;
-        PowersTypes.MandateInitData[] memory initData = new PowersTypes.MandateInitData[](1);
         conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
         conditions.succeedAt = 51; // = simple majority
         conditions.quorum = 80; // = 80% quorum
-        initData[0] = PowersTypes.MandateInitData({
+        conditions.allowedRole = 3; // = legal Interfacers. Legal Interfacers can select Stewards from the pool of nominees through a peer selection process.
+        constitution.push(PowersTypes.MandateInitData({
                 nameDescription: "Select Stewards: Legal Interfacers can select Stewards from the pool of nominees.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "PeerSelect"),
                 config: abi.encode(
@@ -384,7 +384,7 @@ contract ConvergenceLayer is DeploySetup {
                     nominees // election list contract // 
                 ),
                 conditions: conditions
-            });
+            }));
         delete conditions;
 
         // ASSIGN LEGAL REPS //
@@ -429,7 +429,7 @@ contract ConvergenceLayer is DeploySetup {
         mandateIds[2] = mandateCount + 3;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Adopt Mandates: This flow allows for the adoption of new mandates, initiated by Members, adopted by Stewards, and subject to veto by the Primary Layer.",
+            nameDescription: "Adopt Mandates: This flow allows for the adoption of new mandates, initiated by Members, adopted by Stewards, and subject to veto by the Primary Layer. It also allows for pausing of mandates by Legal Interfacers.",
             mandateIds: mandateIds
         }));
 
@@ -486,12 +486,11 @@ contract ConvergenceLayer is DeploySetup {
         delete conditions;
 
         // LEGAL REPS CAN PAUSE AND RESTART MANDATES //
-        mandateIds = new uint16[](2);
-        mandateIds[0] = mandateCount + 1;
-        mandateIds[1] = mandateCount + 2;
+        mandateIds = new uint16[](1);
+        mandateIds[0] = mandateCount + 1; 
 
         flows.push(PowersTypes.Flow({
-            nameDescription: "Executive Mandates Management: This flow allows Legal Interfacers to adopt or revoke executive mandates, effectively controlling the Layer's functional state.",
+            nameDescription: "Pause Mandates: This flow allows Legal Interfacers to adopt or revoke executive mandates, effectively controlling the Layer's functional state.",
             mandateIds: mandateIds
         }));
 
