@@ -1,0 +1,29 @@
+{
+  "icon": "",
+  "banner": "https://aqua-famous-sailfish-288.mypinata.cloud/ipfs/bafybeih77m4lyvnjtlfjhdxlallszwylnfygjlhvolursvd4kwlyq4qceu/ideasLayer.png",
+  "description": 
+    "Manages concepts, digital interfaces, and its own legislative frameworks. It acts as a gate keeper to forum group chats and has the power to initiate the creation of a Physical Layer. It does not have an allowance at the parent DAO.",
+  "website": "https://github.com/publius-projects/powers-monorepo/tree/main/frontend/organisations",
+  "codeOfConduct": "https://github.com/publius-projects/powers-monorepo/blob/main/CODE_OF_CONDUCT.md", 
+  "disputeResolution": "",
+  "xmtpAgentAddress": "0xe65d5d40c878339596423b929058a13147f925e1",
+  "communicationChannels": {
+      "discord": "",
+      "telegram": "",
+      "x": "",
+      "paragraph": "",
+      "youtube": "",
+      "facebook": "",
+      "github": "https://github.com/publius-projects/powers-monorepo",
+      "forum": "",
+      "documentation": "https://powers-docs.vercel.app/"
+  },
+  "parentContracts": [ 
+    {
+      "title": "Primary Layer",
+      "address": "0x6120CC5904079EB7b5ad463162098A031a71cd90"
+    }
+  ],
+  "childContracts": [ ],
+  "attributes": [ ]
+}
