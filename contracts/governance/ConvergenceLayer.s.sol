@@ -96,6 +96,7 @@ contract ConvergenceLayer is DeploySetup {
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
         calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
         calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
+        // £todo: treasury as itself. 
         calldatas[10] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use. 
 
         mandateCount++;
@@ -278,6 +279,7 @@ contract ConvergenceLayer is DeploySetup {
         }));
 
         // I think this will work. Still needs to be tested though. 
+        // IT DOES NOT
         mandateCount++;
         conditions.allowedRole = type(uint256).max; // = public
         constitution.push(

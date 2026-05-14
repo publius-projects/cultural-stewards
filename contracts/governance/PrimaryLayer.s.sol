@@ -4,8 +4,6 @@ pragma solidity ^0.8.26;
 import { Script } from "forge-std/Script.sol";
 import { console2 } from "forge-std/console2.sol";
 import { Configurations } from "@lib/powers-monorepo/solidity/script/Configurations.s.sol";
-import { Safe } from "@lib/safe-smart-account/contracts/Safe.sol";
-import { ModuleManager } from "@lib/safe-smart-account/contracts/base/ModuleManager.sol";
 import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";
 import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
 import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
@@ -13,8 +11,11 @@ import { Soulbound1155, Soulbound1155Factory } from "@lib/powers-monorepo/solidi
 import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol"; 
 import { ElectionRegistry } from "@lib/powers-monorepo/solidity/src/helpers/ElectionRegistry.sol";
 import { DeploySetup } from "./DeploySetup.s.sol";
-import { SafeProxyFactory } from "@lib/safe-smart-account/contracts/proxies/SafeProxyFactory.sol";
 import { PowersPaymaster } from "@lib/powers-monorepo/solidity/src/helpers/PowersPaymaster.sol";
+
+import { Safe } from "@lib/safe-smart-account/contracts/Safe.sol";
+import { ModuleManager } from "@lib/safe-smart-account/contracts/base/ModuleManager.sol";
+import { SafeProxyFactory } from "@lib/safe-smart-account/contracts/proxies/SafeProxyFactory.sol";
 import { IEntryPoint } from "@lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 
 contract PrimaryLayer is DeploySetup {
@@ -171,9 +172,8 @@ contract PrimaryLayer is DeploySetup {
         calldatas[6] = abi.encodeWithSelector(IPowers.labelRole.selector, 5, "Digital Layers", "");
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
         calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount1);
-        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount2);
-        // calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount3);
-        calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
+        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount2); 
+        calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, testAccount1);
         calldatas[11] = abi.encodeWithSelector(IPowers.assignRole.selector, 5, digitalLayer);
         calldatas[12] = abi.encodeWithSelector(IPowers.setTreasury.selector, treasury);
         calldatas[13] = abi.encodeWithSelector(IPowers.setPaymaster.selector, paymaster);
@@ -248,6 +248,9 @@ contract PrimaryLayer is DeploySetup {
             mandateIds: mandateIds
         }));
 
+        inputParams = new string[](1);
+        inputParams[0] = "string Name";  
+
         // Participants: Initiate Ideas Layer creation
         mandateCount++;
         conditions.allowedRole = 1; // = Participants
@@ -258,7 +261,7 @@ contract PrimaryLayer is DeploySetup {
             PowersTypes.MandateInitData({
                 nameDescription: "Initiate Ideas Layer: Initiate creation of Ideas Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
-                config: abi.encode(),
+                config: abi.encode(inputParams),
                 conditions: conditions
             })
         );
@@ -277,8 +280,8 @@ contract PrimaryLayer is DeploySetup {
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     address(ideasLayerFactory), // calling the ideas factory
-                    bytes4(keccak256("createPowers()")),
-                    abi.encode()  
+                    bytes4(keccak256("createPowers(string)")),
+                    abi.encode(inputParams)  
                 ),
                 conditions: conditions
             })
@@ -297,7 +300,7 @@ contract PrimaryLayer is DeploySetup {
                     address(powers), // target contract
                     IPowers.assignRole.selector, // function selector to call
                     abi.encode(4), // params before (role id 4 = Ideas Layers)
-                    abi.encode(), // dynamic params (the input params of the parent mandate)
+                    abi.encode(inputParams), // dynamic params (the input params of the parent mandate)
                     mandateCount - 1, // parent mandate id (the create Ideas Layer mandate)
                     abi.encode() // no params after
                 ),
@@ -318,7 +321,7 @@ contract PrimaryLayer is DeploySetup {
                     paymaster, // target contract
                     bytes4(keccak256("addSponsoredTarget(address)")), // function selector to call
                     abi.encode(), // params before (role id 4 = Ideas Layers)
-                    abi.encode(), // dynamic params (the input params of the parent mandate)
+                    abi.encode(inputParams), // dynamic params (the input params of the parent mandate)
                     mandateCount - 2, // parent mandate id (the create Ideas Layer mandate)
                     abi.encode() // no params after
                 ),
@@ -407,15 +410,16 @@ contract PrimaryLayer is DeploySetup {
         }));
 
         // note: an allowance is set when LAYER is created.
-        inputParams = new string[](1); 
-        inputParams[0] = "address Initiator"; // the address of the admin of the new LAYER
+        inputParams = new string[](2);
+        inputParams[0] = "string Name"; 
+        inputParams[1] = "address Initiator"; // the address of the admin of the new LAYER
 
         // Primary Stewards: Veto creation of Convergence Layer.
         mandateCount++;
         conditions.allowedRole = 2; // = Primary Stewards
-        conditions.votingPeriod = minutesToBlocks(5, helperConfig.getBlocksPerHour(block.chainid)); // = 5 minutes / days
-        conditions.succeedAt = 66; // = 2/3 majority
-        conditions.quorum = 66; // = 66% quorum
+        conditions.votingPeriod = minutesToBlocks(3, helperConfig.getBlocksPerHour(block.chainid)); // = 3 minutes / days
+        conditions.succeedAt = 51; // = simple majority
+        conditions.quorum = 22; // = 22% quorum
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Veto creation Convergence Layer: Stewards can veto the creation of a Convergence Layer from an Ideas Layer",
@@ -432,7 +436,7 @@ contract PrimaryLayer is DeploySetup {
         // Ideas Layer: Create Convergence Layer
         mandateCount++; 
         conditions.allowedRole = 4; // = (a single) Ideas Layer
-        conditions.timelock = minutesToBlocks(10, helperConfig.getBlocksPerHour(block.chainid)); // = 10 minutes / days. Note: timelock allows for veto to be cast. 
+        conditions.timelock = minutesToBlocks(7, helperConfig.getBlocksPerHour(block.chainid)); // = 7 minutes / days. Note: timelock allows for veto to be cast. 
         conditions.needNotFulfilled = mandateCount - 1; // need the previous mandate NOT to be fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
@@ -440,7 +444,7 @@ contract PrimaryLayer is DeploySetup {
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
                     address(convergenceLayerFactory), // calling the Convergence factory 
-                    bytes4(keccak256("createPowers(address)")), // function selector for createPowers (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
+                    bytes4(keccak256("createPowers(string,address)")), // function selector for createPowers (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
                     inputParams // address as input param 
                 ),
                 conditions: conditions
@@ -534,8 +538,6 @@ contract PrimaryLayer is DeploySetup {
             })
         );
         delete conditions;
-
-        // 
 
         // REVOKE CONVERGENCE LAYER //
         mandateIds = new uint16[](4);
@@ -1153,7 +1155,7 @@ contract PrimaryLayer is DeploySetup {
         mandateIds[8] = mandateCount + 9;
 
         flows.push(PowersTypes.Flow({
-            nameDescription: " Adopt Mandate: This flow includes the proposal, veto and execution of adopting a new mandate into the constitution. Any layer can propose to adopt a new mandate into the constitution, but only the Primary Steward can execute it, and the Participants and all layers have veto power over it.",
+            nameDescription: "Adopt Mandate: This flow includes the proposal, veto and execution of adopting a new mandate into the constitution. Any layer can propose to adopt a new mandate into the constitution, but only the Primary Steward can execute it, and the Participants and all layers have veto power over it.",
             mandateIds: mandateIds
         }));
 
@@ -1309,7 +1311,7 @@ contract PrimaryLayer is DeploySetup {
         conditions.needNotFulfilled = vetoConvergenceId;
         constitution.push(
             PowersTypes.MandateInitData({
-                nameDescription: "Adopt new Mandates: Primary Steward can adopt new mandates into the organization",
+                nameDescription: "Adopt new Mandates: Primary Steward can adopt new mandates into the organization.",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "Adopt_Mandates"),
                 config: abi.encode(),
                 conditions: conditions

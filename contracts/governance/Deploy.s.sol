@@ -40,7 +40,7 @@ contract Deploy is Script {
 
     string[] public ideasLayerNames = ["Seeing", "Making", "Listening", "Telling", "Remembering", "Imagining", "Tending"];
     
-    function run() external { 
+    function run() external returns (PrimaryLayer, DigitalLayer, IdeasLayer, ConvergenceLayer) { 
         // step 1, setup. 
         primaryLayer = new PrimaryLayer();
         digitalLayer = new DigitalLayer();
@@ -100,10 +100,8 @@ contract Deploy is Script {
         Nominees(helpers.getNominees()).transferOwnership(primaryLayer.getAddress());
         vm.stopBroadcast();
  
-        // step 5: run setup on primary and digital layer.
-        initialise.runSetupMandate(primaryLayer.getAddress(), block.timestamp);
-        initialise.runSetupMandate(digitalLayer.getAddress(), block.timestamp);
-
         console2.log("Success! All contracts successfully deployed.");
+
+        return (primaryLayer, digitalLayer, ideasLayerFactory, convergenceLayerFactory);
     }
 }

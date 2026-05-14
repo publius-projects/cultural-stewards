@@ -32,12 +32,13 @@ remappings = [
     "@chainlink/contracts-ccip/=lib/chainlink-ccip/chains/evm/contracts",
     "@zkpassport/registry-sdk/=lib/zkpassport-packages/packages/registry-sdk/",
     "@zkpassport/registry-contracts/=lib/zkpassport-packages/packages/registry-contracts/",
-    "@zkpassport/circuits/=lib/circuits/src/solidity/", 
-    "@mocks/=lib/powers-monorepo/solidity/src/test/mocks/", 
+    "@zkpassport/circuits/=lib/powers-monorepo/solidity/lib/circuits/src/solidity/",
+    "@mocks/=lib/powers-monorepo/solidity/src/test/mocks/",
     "@src/=lib/powers-monorepo/solidity/src/",
+    "@lib/circuits/=lib/powers-monorepo/solidity/lib/circuits/",
     "@lib/=lib/",
     "@script/=lib/powers-monorepo/solidity/script",
-    "@governance/=lib/powers-monorepo/solidity/governance/"
+    "@governance/=governance/"
 ] 
 
 [fmt]

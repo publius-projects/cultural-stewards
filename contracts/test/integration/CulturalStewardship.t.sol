@@ -1,153 +1,129 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.26;
 
-// import { Test, console, console2 } from "forge-std/Test.sol";
-// import { Powers } from "lib/powers-monorepo/solidity/src/Powers.sol";
-// import { Mandate } from "lib/powers-monorepo/solidity/src/Mandate.sol";
-// import { IPowers } from "lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
-// import { PowersTypes } from "lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";
-// import { Deploy } from "lib/powers-monorepo/solidity/src/governance/culturalStewardsDAO/Deploy.s.sol";
-// import { Safe } from "lib/safe-smart-account/contracts/Safe.sol";
-// import { SimpleErc20Votes } from "lib/powers-monorepo/solidity/src/test/mocks/SimpleErc20Votes.sol";
-// import { Configurations } from "lib/powers-monorepo/solidity/src/script/Configurations.s.sol";
-// import { Strings } from "lib/openzeppelin-contracts/contracts/utils/Strings.sol"; 
-// import { PresetActions } from "lib/powers-monorepo/solidity/src/mandates/executive/PresetActions.sol";
-// interface IAllowanceModule {
-//     function delegates(address safe, uint48 index) external view returns (address delegate, uint48 prev, uint48 next);
-//     function getTokenAllowance(address safe, address delegate, address token) external view returns (uint256[5] memory);
-// }
+import { Test, console, console2 } from "forge-std/Test.sol";
+import { Powers } from "@lib/powers-monorepo/solidity/src/Powers.sol";
+import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
+import { PowersFactory } from "@lib/powers-monorepo/solidity/src/helpers/PowersFactory.sol";
+import { Mandate } from "@lib/powers-monorepo/solidity/src/Mandate.sol";
+import { IPowers } from "@lib/powers-monorepo/solidity/src/interfaces/IPowers.sol";
+import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";
+import { Deploy } from "@governance/Deploy.s.sol";
+import { Configurations } from "@lib/powers-monorepo/solidity/script/Configurations.s.sol"; 
+import { TestHelperFunctions } from "@lib/powers-monorepo/solidity/test/TestSetup.t.sol";
+import { PresetActions } from "@lib/powers-monorepo/solidity/src/mandates/executive/PresetActions.sol";
 
-// contract CulturalStewardsDAO_IntegrationTest is Test {
-//     struct Mem {
-//         address admin;
-//         uint16 setDelegateMandateId;
-//         uint16 initiateIdeasMandateId;
-//         uint16 createIdeasMandateId;
-//         uint16 assignRoleMandateId;
-//         uint16 revokeIdeasMandateId;
-//         uint16 initiateConvergenceId;
-//         uint16 deployMeritBadgeId;
-//         uint16 addDependencyId;
-//         uint16 createConvergenceId;
-//         uint16 assignRoleId;
-//         uint16 assignAllowanceId;
-//         uint16 revokeRoleId;
-//         uint16 revokeAllowanceId;
-//         uint16 assignDelegateId;
-//         uint16 requestConvergenceAllowanceId;
-//         uint16 grantConvergenceAllowanceId;
-//         uint16 requestDigitalAllowanceId;
-//         uint16 grantDigitalAllowanceId;
-//         uint16 initiateReformId;
-//         uint16 checkpoint1Id;
-//         uint16 checkpoint2Id;
-//         uint16 checkpoint3Id;
-//         uint16 adoptMandateId;
+import { Helpers } from "@governance/Helpers.s.sol";
+import { Initialise } from "@governance/actions/Initialise.s.sol";
+import { PrimaryLayer } from "@governance/PrimaryLayer.s.sol";
+import { DigitalLayer } from "@governance/DigitalLayer.s.sol";
+import { IdeasLayer } from "@governance/IdeasLayer.s.sol";
+import { ConvergenceLayer } from "@governance/ConvergenceLayer.s.sol";
 
-//         uint256 actionId;
-//         // Added fields to avoid stack too deep
-//         uint256 constitutionLength;
-//         uint256 packageSize;
-//         uint256 numPackages;
-//         bytes params;
-//         uint256 nonce;
-//         address convergenceSubDAOAddress;
-//         bytes revokeParams;
-//         // Additional fields for other tests
-//         uint48 delegateIndex;
-//         address delegateAddr;
-//         bool isActive;
-//         bool isEnabled;
-//         address ideasSubDAOAddress;
-//         uint32 votingPeriod;
-//         uint32 timelock;
-//         uint48 roleSince;
-//         bytes returnData;
+interface IAllowanceModule {
+    function delegates(address safe, uint48 index) external view returns (address delegate, uint48 prev, uint48 next);
+    function getTokenAllowance(address safe, address delegate, address token) external view returns (uint256[5] memory);
+}
 
-//         address token; // ETH
-//         uint96 amount;
-//         uint16 resetTime;
-//         uint32 resetBase;
-//         address digitalLayerAddr;
-//         bytes allowanceParams;
+contract CulturalStewardsDAO_IntegrationTest is TestHelperFunctions {
+    struct Mem {
+        uint256 nonce;
+    }
+    Mem mem;
 
-//         // New fields added during refactoring
-//         address user;
-//         address recipient;
-//         address fakeIdeasLayer;
-//         address mockConvergenceLayer;
-//         address convener;
-//         address member;
+    // Deploy & config 
+    Deploy deploy;
+    Configurations helperConfig;
+    
+    // layers
+    PrimaryLayer primaryLayer;
+    DigitalLayer digitalLayer;
+    IdeasLayer ideasLayerFactory;
+    ConvergenceLayer convergenceLayerFactory;
 
-//         uint256 paymentAmount;
-//         uint48 startBlock;
-//         uint48 endBlock;
-//         uint256 voteMandateId;
-//         uint256 numberOfRole1Holders;
+    // actions 
+    Initialise initialise;
+    // assets, management, .. etc  
 
-//         uint16 submitReceiptId;
-//         uint16 okReceiptId;
-//         uint16 approvePaymentId;
-//         uint16 claimStep1Id;
-//         uint16 claimStep2Id;
-//         uint16 mintActivityId;
-//         uint16 mintPoapPrimaryId;
-//         uint16 mintActivityTokenPrimaryId;
-//         uint16 mandateId;
-//         uint16 createElectionId;
-//         uint16 nominateId;
-//         uint16 openVoteId;
-//         uint16 tallyElectionId;
-//         uint16 cleanupElectionId;
-//         uint16 initiateRequestId;
-//         uint16 createWGId;
-//         uint16 createWGElectionId;
-//         uint16 tallyId;
-//         uint16 requestConvergenceId;
+    address treasury;
+    address safeAllowanceModule;
+    address cedars = 0x328735d26e5Ada93610F0006c32abE2278c46211;
+    address testAccount1 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_1"));
+    address testAccount2 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_2"));
+    address testAccount3 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_3"));
 
-//         uint256[5] allowanceInfo;
-//         bytes paymentParams;
-//         uint256[] nonces;
-//         uint256[] actionIds;
-//         uint256[] tokenIds;
-//         bytes electionParams;
-//         bool[] votes;
-//         uint256[] roleIds;
-//         // Added for test_IdeasSubDAO_MembershipAndModeration
-//         uint256 amountRoleHolders;
-//         address moderator;
-//         address applicant;
-//         uint16 assignModeratorId;
-//         uint16 applyMembershipId;
-//         uint16 assignMembershipId;
-//         uint16 revokeMembershipId;
-//         uint16 revokeModeratorId;
-//         bytes appParams;
-//     }
-//     Mem mem;
+    uint256 fork; 
+    string[] IDEAS_NAMES = ["Seeing", "Making", "Listening", "Telling", "Remembering", "Imagining", "Tending"];
+    uint256[] privateKeys = [
+        vm.envUint("TEST_ACCOUNT_KEY_1"), 
+        vm.envUint("TEST_ACCOUNT_KEY_2"), 
+        vm.envUint("TEST_ACCOUNT_KEY_3")
+    ];
 
-//     Deploy deployScript;
-//     Configurations helperConfig;
-//     Powers PrimaryLayer;
-//     Powers digitalLayer; 
+    function setUp() public {
+        helperConfig = new Configurations();
 
-//     address treasury;
-//     address safeAllowanceModule;
-//     address cedars = 0x328735d26e5Ada93610F0006c32abE2278c46211;
+        // the test always needs to run on a forked chain that has the Safe protocol deployed. 
+        fork = vm.createFork(vm.envString("SEPOLIA_RPC_URL"));
+        vm.selectFork(fork);
 
-//     function setUp() public {
-//         helperConfig = new Configurations();
+        // Deploy the initial organisations and factories. 
+        deploy = new Deploy();        
+        (primaryLayer, digitalLayer, ideasLayerFactory, convergenceLayerFactory) = deploy.run();
 
-//         vm.skip(false); // Remove this line to run the test
-//         uint256 sepoliaFork = vm.createFork(vm.envString("SEPOLIA_RPC_URL"));
-//         vm.selectFork(sepoliaFork);
+        // setting up the organisation (6 Ideas layes + 1 convergence layer)
+        //1step 1 running setup mandates on Primary and Digital Layer. 
+        initialise = new Initialise();
+        initialise.runSetupMandate(primaryLayer.getAddress(), block.timestamp);
+        initialise.runSetupMandate(digitalLayer.getAddress(), block.timestamp);
 
-//         // Deploy the script
-//         deployScript = new Deploy();
-//         deployScript.run();
+        // step 2: intialise Ideas Layers  
+        initialise.deployIdeasLayer1(ideasLayerFactory.getAddress(), block.timestamp, IDEAS_NAMES, privateKeys);
+        
+        vm.roll(block.number + minutesToBlocks(6, helperConfig.getBlocksPerHour(block.chainid))); // Advance some blocks to avoid same-block issues.
+
+        initialise.deployIdeasLayer2(ideasLayerFactory.getAddress(), block.timestamp, IDEAS_NAMES, privateKeys);
+        vm.roll(block.number + minutesToBlocks(6, helperConfig.getBlocksPerHour(block.chainid))); // Advance some blocks to avoid same-block issues.
+
+        initialise.deployIdeasLayer3(ideasLayerFactory.getAddress(), block.timestamp, IDEAS_NAMES);
+        vm.roll(block.number + minutesToBlocks(6, helperConfig.getBlocksPerHour(block.chainid))); // Advance some blocks to avoid same-block issues.
+
+        // step 3: initialise Convergence Layer
+        address ideasLayer0 = Powers(payable(primaryLayer.getAddress())).getRoleHolderAtIndex(4, 0);
+        initialise.deployConvergenceLayer1(ideasLayer0, primaryLayer.getAddress(), block.timestamp, privateKeys);
+        vm.roll(block.number + minutesToBlocks(6, helperConfig.getBlocksPerHour(block.chainid))); // Advance some blocks to avoid same-block issues.
+
+        initialise.deployConvergenceLayer2(convergenceLayerFactory.getAddress(), block.timestamp);
+        vm.roll(block.number + minutesToBlocks(8, helperConfig.getBlocksPerHour(block.chainid))); // Advance some blocks to avoid same-block issues.
+
+        initialise.deployConvergenceLayer3(convergenceLayerFactory.getAddress(), block.timestamp);
+    }
+
+    function test_initialise_cultural_stewards() public view {
+        // check dependencies 
+        check_inputParamsDependencies(primaryLayer); 
+        check_inputParamsDependencies(digitalLayer); 
+        check_inputParamsDependencies(ideasLayerFactory); 
+        check_inputParamsDependencies(convergenceLayerFactory); 
+
+        // check label role 
+        vm.assertTrue(keccak256(abi.encodePacked(Powers(payable(primaryLayer)).getRoleLabel(1))) == keccak256(abi.encodePacked("Artist")), "Role 1 should be 'Artist'"); 
+        vm.assertTrue(keccak256(abi.encodePacked(Powers(payable(primaryLayer)).getRoleLabel(2))) == keccak256(abi.encodePacked("Owner")), "Role 2 should be 'Owner'"); 
+        vm.assertTrue(keccak256(abi.encodePacked(Powers(payable(primaryLayer)).getRoleLabel(3))) == keccak256(abi.encodePacked("Operator")), "Role 3 should be 'Operator'"); 
+        vm.assertTrue(keccak256(abi.encodePacked(Powers(payable(primaryLayer)).getRoleLabel(4))) == keccak256(abi.encodePacked("Voter")), "Role 4 should be 'Voter'"); 
+        vm.assertTrue(keccak256(abi.encodePacked(Powers(payable(primaryLayer)).getRoleLabel(5))) == keccak256(abi.encodePacked("Executive")), "Role 5 should be 'Executive'"); 
+        
+        // check that test Account 1 is executive 
+        vm.assertTrue(Powers(payable(primaryLayer)).hasRoleSince(testAccount1, 5) > 0, "Test Account 1 should have Executive role");
+
+        // check treasury 
+        vm.assertTrue(Powers(payable(primaryLayer)).getTreasury() == primaryLayer, "Treasury should be set as organisation itself.");
+    }
+
+}
 
 //         // Get the deployed contracts
-//         PrimaryLayer = deployScript.getPrimaryLayer();   
+//          
 
 //         // Execute "Initial Setup"
 //         vm.prank(cedars);

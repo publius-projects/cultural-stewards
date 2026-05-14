@@ -171,8 +171,9 @@ contract IdeasLayer is DeploySetup {
             mandateIds: mandateIds
         }));
 
-        inputParams = new string[](1); // no input params, as all params are set in the config of the mandate.
-        inputParams[0] = "address Setup Initiator"; // the only input param is the new URI for the convergence layer, which will be used by Stewards when requesting the creation of a new convergence layer.
+        inputParams = new string[](2); // no input params, as all params are set in the config of the mandate.
+        inputParams[0] = "string Name"; // the name of the new convergence layer 
+        inputParams[1] = "address Initiator"; // the only input param is the new URI for the convergence layer, which will be used by Stewards when requesting the creation of a new convergence layer.
 
         // Participants: Initialise request for new convergence layer.
         mandateCount++;

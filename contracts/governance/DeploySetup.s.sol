@@ -19,6 +19,7 @@ abstract contract DeploySetup is DeployHelpers {
     MandateRegistry registry = MandateRegistry(0x97b66F08Eb857e27A24492D338d3DC484DF63896); 
 
     address cedars = 0x328735d26e5Ada93610F0006c32abE2278c46211;
+    address hannah = 0xEA223f81D7E74321370a77f1e44067bE8738B627;
     address testAccount1 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_1"));
     address testAccount2 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_2"));
     address testAccount3 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_3"));
@@ -38,7 +39,7 @@ abstract contract DeploySetup is DeployHelpers {
     // The mandate version to be used. 
     uint16 constant MAJOR = 0;
     uint16 constant MINOR = 1;
-    uint16 constant PATCH = 2;
+    uint16 constant PATCH = 5;
 
     uint16 constant PACKAGE_SIZE = 7;  
 }

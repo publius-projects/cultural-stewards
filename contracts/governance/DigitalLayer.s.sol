@@ -99,7 +99,7 @@ contract DigitalLayer is DeploySetup {
         //////////////////////////////////////////////////////////////////////
         //                              SETUP                               //
         //////////////////////////////////////////////////////////////////////
-        calldatas = new bytes[](11);
+        calldatas = new bytes[](12);
         calldatas[0] = abi.encodeWithSelector(IPowers.labelRole.selector, 0, "Admin", "");  
         calldatas[1] = abi.encodeWithSelector(IPowers.labelRole.selector, type(uint256).max, "Read", ""); 
         calldatas[2] = abi.encodeWithSelector(IPowers.labelRole.selector, 1, "Write", ""); 
@@ -108,9 +108,10 @@ contract DigitalLayer is DeploySetup {
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 7, "Convergence Layer", "");
         calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
         calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
-        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
-        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer);
-        calldatas[10] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use.
+        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, hannah);
+        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, hannah);
+        calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer);
+        calldatas[11] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use.
 
         mandateCount++;
         conditions.allowedRole = type(uint256).max; // = public.
