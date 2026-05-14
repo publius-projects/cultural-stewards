@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Script } from "forge-std/Script.sol";
+import { Script } from "forge-std/Script.sol"; 
 import { console2 } from "forge-std/console2.sol";
 import { Configurations } from "@lib/powers-monorepo/solidity/script/Configurations.s.sol";
 import { PowersTypes } from "@lib/powers-monorepo/solidity/src/interfaces/PowersTypes.sol";

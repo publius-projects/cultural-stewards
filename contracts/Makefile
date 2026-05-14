@@ -121,6 +121,7 @@ update-deps:
 install-deps:
 	@echo "Installing dependencies..."
 	forge install foundry-rs/forge-std --no-git || exit 1
+	forge install openzeppelin/openzeppelin-contracts@v5.6.1  --no-git || exit 1
 	forge install publius-projects/powers-monorepo --no-git || exit 1
 	forge install safe-fndn/safe-smart-account@v1.4.1 --no-git || exit 1
 	forge install eth-infinitism/account-abstraction@v0.7.0 --no-git || exit 1
@@ -132,6 +133,7 @@ reset-deps:
 	@rm -rf lib/
 	@mkdir -p lib
 	@forge install foundry-rs/forge-std --no-git || exit 1
+	@forge install openzeppelin/openzeppelin-contracts@v5.6.1  --no-git || exit 1
 	@forge install publius-projects/powers-monorepo --no-git || exit 1
 	@forge install safe-fndn/safe-smart-account@v1.4.1 --no-git || exit 1
 	@forge install eth-infinitism/account-abstraction@v0.7.0 --no-git || exit 1

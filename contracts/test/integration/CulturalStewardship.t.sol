@@ -32,8 +32,7 @@ contract CulturalStewardsDAO_IntegrationTest is TestHelperFunctions {
     Mem mem;
 
     // Deploy & config 
-    Deploy deploy;
-    Configurations helperConfig;
+    Deploy deploy; 
     
     // layers
     PrimaryLayer primaryLayer;
@@ -46,8 +45,7 @@ contract CulturalStewardsDAO_IntegrationTest is TestHelperFunctions {
     // assets, management, .. etc  
 
     address treasury;
-    address safeAllowanceModule;
-    address cedars = 0x328735d26e5Ada93610F0006c32abE2278c46211;
+    address safeAllowanceModule; 
     address testAccount1 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_1"));
     address testAccount2 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_2"));
     address testAccount3 = vm.addr(vm.envUint("TEST_ACCOUNT_KEY_3"));

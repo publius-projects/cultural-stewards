@@ -5,6 +5,9 @@ out/
 # Ignores development broadcast logs
 /broadcast
 
+# Dependencies
+node_modules/
+
 # Docs
 docs/
 

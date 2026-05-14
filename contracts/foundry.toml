@@ -21,22 +21,11 @@ fs_permissions = [
 # Remappings for dependencies
 # NOTE: Order matters! More specific remappings should come first
 remappings = [
-    # Your project's remappings (@ prefixed - these take priority)
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
-    "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
-    "@forge-std/=lib/forge-std/src/",
-    "@solady/=lib/solady/src/",
-    "@solbase/=lib/solbase/src/",
-    "@safe/=lib/safe-smart-account/contracts/",
-    "@chainlink/contracts/=lib/chainlink-evm/contracts", 
-    "@chainlink/contracts-ccip/=lib/chainlink-ccip/chains/evm/contracts",
-    "@zkpassport/registry-sdk/=lib/zkpassport-packages/packages/registry-sdk/",
-    "@zkpassport/registry-contracts/=lib/zkpassport-packages/packages/registry-contracts/",
-    "@zkpassport/circuits/=lib/powers-monorepo/solidity/lib/circuits/src/solidity/",
-    "@mocks/=lib/powers-monorepo/solidity/src/test/mocks/",
     "@src/=lib/powers-monorepo/solidity/src/",
-    "@lib/circuits/=lib/powers-monorepo/solidity/lib/circuits/",
-    "@lib/=lib/",
+    "@lib/powers-monorepo/=lib/powers-monorepo/",
+    "@lib/safe-smart-account/=lib/safe-smart-account/",
+    "@lib/account-abstraction/=lib/account-abstraction/",
     "@script/=lib/powers-monorepo/solidity/script",
     "@governance/=governance/"
 ] 
