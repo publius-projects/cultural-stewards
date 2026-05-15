@@ -8,7 +8,6 @@ import ScrollToTop from "./components/ScrollToTop";
 
 import Contact from "./pages/Contact.tsx";
 import DaoPortal from "./pages/DaoPortal.tsx";
-import Form from "./pages/Form.tsx";
 import Events from "./pages/Events.tsx";
 import PrimaryDao from "./pages/PrimaryDao.tsx";
 import DigitalDao from "./pages/DigitalDao.tsx";
@@ -31,7 +30,6 @@ const App = () => (
           
           <Route path="/correspondence" element={<Contact />} />
           <Route path="/door" element={<DaoPortal />} />
-          <Route path="/form" element={<Form />} />
           <Route path="/sessions" element={<Events />} />
           <Route path="/primary-layer" element={<PrimaryDao />} />
           <Route path="/digital-layer" element={<DigitalDao />} />

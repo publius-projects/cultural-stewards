@@ -5,14 +5,15 @@ out/
 # Ignores development broadcast logs
 /broadcast
 
-# ignore lib files
-/lib
-lib/
-contracts/lib/
+# Dependencies
+node_modules/
 
 # Docs
 docs/
 
 # Dotenv file
 .env
- 
+
+# Website build artifacts and dependencies
+website/node_modules/
+website/dist/

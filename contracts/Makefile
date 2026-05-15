@@ -122,15 +122,14 @@ install-deps:
 	@echo "Installing dependencies..."
 	forge install foundry-rs/forge-std --no-git || exit 1
 	forge install publius-projects/powers-monorepo --no-git || exit 1
-	forge install openzeppelin/openzeppelin-contracts@v5.0.2  --no-git || exit 1
+	forge install openzeppelin/openzeppelin-contracts@v5.6.1  --no-git || exit 1
 	forge install smartcontractkit/chainlink-evm@contracts-v1.4.0  --no-git || exit 1
 	forge install smartcontractkit/chainlink-ccip@contracts-ccip-v1.6.0  --no-git || exit 1
 	forge install safe-fndn/safe-smart-account@v1.4.1 --no-git || exit 1
 	forge install safe-fndn/safe-modules --no-git || exit 1
-	forge install zkpassport/circuits --no-git || exit 1
-	forge install zkpassport/zkpassport-packages --no-git || exit 1
+	forge install zkpassport/circuits@24537062043212a73f70066f2e04bc0abe97ae0e --no-git || exit 1
+	forge install eth-infinitism/account-abstraction@v0.7.0 --no-git || exit 1
 	@echo "Dependencies installed without git metadata."
-	
 
 reset-deps:
 	@echo "Resetting dependencies..."
@@ -138,13 +137,20 @@ reset-deps:
 	@mkdir -p lib
 	@forge install foundry-rs/forge-std --no-git || exit 1
 	@forge install publius-projects/powers-monorepo --no-git || exit 1
-	@forge install openzeppelin/openzeppelin-contracts@v5.0.2 --no-git || exit 1
-	@forge install smartcontractkit/chainlink-evm@contracts-v1.4.0 --no-git || exit 1
-	@forge install smartcontractkit/chainlink-ccip@contracts-ccip-v1.6.0 --no-git || exit 1
+	@forge install openzeppelin/openzeppelin-contracts@v5.6.1  --no-git || exit 1
+	@forge install smartcontractkit/chainlink-evm@contracts-v1.4.0  --no-git || exit 1
+	@forge install smartcontractkit/chainlink-ccip@contracts-ccip-v1.6.0  --no-git || exit 1
 	@forge install safe-fndn/safe-smart-account@v1.4.1 --no-git || exit 1
 	@forge install safe-fndn/safe-modules --no-git || exit 1
-	@forge install zkpassport/circuits --no-git || exit 1
+	@forge install zkpassport/circuits@24537062043212a73f70066f2e04bc0abe97ae0e --no-git || exit 1
+	@forge install eth-infinitism/account-abstraction@v0.7.0 --no-git || exit 1
 	@echo "Dependencies reset complete. All libs installed without git metadata."
+
+circuits-reset: 
+	@echo "Resetting circuits dependency..."
+	@rm -rf lib/circuits/
+	@forge install zkpassport/circuits@24537062043212a73f70066f2e04bc0abe97ae0e --no-git || exit 1
+	@echo "Circuits dependency reset complete."
 
 # Documentation
 doc:
@@ -308,7 +314,15 @@ fork-anvil :
 
 governance-deploy : 
 	@echo "Deploying example contracts..."
-	forge script governance/Deploy.s.sol:Deploy $(SEPOLIA_DEPLOY_ARGS) 
+	forge script governance/Deploy.s.sol:Deploy $(SEPOLIA_DEPLOY_ARGS)
+
+ideas-layer-deploy : 
+	@echo "Deploying ideas layer contracts..."
+	./governance/bash/deploy_ideas_layers.sh "" "" "" "" $(SEPOLIA_DEPLOY_ARGS)
+
+convergence-layer-deploy : 
+	@echo "Deploying convergence layer contracts..."
+	./governance/bash/deploy_convergence_layer.sh "" "" "" "" $(SEPOLIA_DEPLOY_ARGS)
 
 # Verify Contracts
 # sepoliaVerifyContract :; forge verify-contract --etherscan-api-key $(ETHERSCAN_API_KEY) --chain 11155111 --verifier etherscan 0x05c0379565ef0ebb1bD21C0Ab463ca5CE5211D3A src/Powers.sol:Powers --watch
