@@ -58,10 +58,6 @@ forge script governance/actions/Initialise.s.sol:Initialise \
     $EXTRA_ARGS
 echo "runSetupMandate completed successfully."
 
-echo ""
-countdown $INTERVAL
-echo ""
-
 echo "[2/4] Executing deployIdeasLayer1..."
 forge script governance/actions/Initialise.s.sol:Initialise \
     --sig "deployIdeasLayer1(address,uint256,string[],uint256[])" \
@@ -86,8 +82,8 @@ echo ""
 
 echo "[4/4] Executing deployIdeasLayer3..."
 forge script governance/actions/Initialise.s.sol:Initialise \
-    --sig "deployIdeasLayer3(address,string[],uint256)" \
-    "$PRIMARY_LAYER" "$IDEAS_NAMES" "$NONCE" \
+    --sig "deployIdeasLayer3(address,uint256,string[],uint256[])" \
+    "$PRIMARY_LAYER" "$NONCE" "$IDEAS_NAMES" "$PRIVATE_KEYS" \
     $EXTRA_ARGS
 echo "deployIdeasLayer3 completed successfully."
 

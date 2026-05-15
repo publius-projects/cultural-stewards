@@ -216,12 +216,13 @@ contract IdeasLayer is DeploySetup {
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Send request: Stewards can send the request to create a new Convergence Layer to the Primary Layer",
-                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "ExternalAction_Simple"),
+                targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Advanced"),
                 config: abi.encode( 
-                    primaryLayer,
-                    requestNewConvergenceLayerId, // parent mandate id (the create new convergence layer at Primary Layer mandate)
-                    "Requesting creation of new Convergence Layer from Primary Layer", // description
-                    inputParams
+                    primaryLayer, // target is its own powers contract
+                    IPowers.propose.selector, // function selector to call
+                    abi.encode(requestNewConvergenceLayerId), // params before (role id 1 = Participants) // the static params
+                    inputParams, // the dynamic params (the input params of the parent mandate)
+                    abi.encode(12345, "Requesting creation of new Convergence Layer from Primary Layer") // no args after
                 ),
                 conditions: conditions
             })

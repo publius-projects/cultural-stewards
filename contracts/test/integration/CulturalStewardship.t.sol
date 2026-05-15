@@ -79,29 +79,32 @@ contract CulturalStewardsDAO_IntegrationTest is TestHelperFunctions {
         // setting up the organisation (6 Ideas layes + 1 convergence layer)
         //1step 1 running setup mandates on Primary and Digital Layer. 
         initialise = new Initialise();
-        initialise.runSetupMandate(primaryAddress, block.timestamp, privateKeys);
-        initialise.runSetupMandate(digitalLayer.getAddress(), block.timestamp, privateKeys);
+        initialise.runSetupMandate(primaryAddress, nonce, privateKeys);
+        initialise.runSetupMandate(digitalLayer.getAddress(), nonce, privateKeys);
 
         // step 2: intialise Ideas Layers  
-        initialise.deployIdeasLayer1(primaryAddress, block.timestamp, IDEAS_NAMES, privateKeys);
+        initialise.deployIdeasLayer1(primaryAddress, nonce, IDEAS_NAMES, privateKeys);
         
         vm.roll(block.number + minutesToBlocks(6, blocksPerHour)); // Advance some blocks to avoid same-block issues.
 
-        initialise.deployIdeasLayer2(primaryAddress, block.timestamp, IDEAS_NAMES, privateKeys);
+        initialise.deployIdeasLayer2(primaryAddress, nonce, IDEAS_NAMES, privateKeys);
         vm.roll(block.number + minutesToBlocks(6, blocksPerHour)); // Advance some blocks to avoid same-block issues.
 
-        initialise.deployIdeasLayer3(primaryAddress, block.timestamp, IDEAS_NAMES, privateKeys);
+        initialise.deployIdeasLayer3(primaryAddress, nonce, IDEAS_NAMES, privateKeys);
         vm.roll(block.number + minutesToBlocks(6, blocksPerHour)); // Advance some blocks to avoid same-block issues.
 
         // step 3: initialise Convergence Layer
         address ideasLayer0 = Powers(payable(primaryAddress)).getRoleHolderAtIndex(4, 0);
-        initialise.deployConvergenceLayer1(ideasLayer0, block.timestamp, privateKeys);
+        initialise.deployConvergenceLayer1(ideasLayer0, nonce, privateKeys);
         vm.roll(block.number + minutesToBlocks(6, blocksPerHour)); // Advance some blocks to avoid same-block issues.
 
-        initialise.deployConvergenceLayer2(ideasLayer0, block.timestamp, privateKeys);
+        initialise.deployConvergenceLayer2(ideasLayer0, nonce, privateKeys);
         vm.roll(block.number + minutesToBlocks(8, blocksPerHour)); // Advance some blocks to avoid same-block issues.
 
-        initialise.deployConvergenceLayer3(primaryAddress, block.timestamp, privateKeys);
+        initialise.deployConvergenceLayer3(primaryAddress, ideasLayer0, nonce, privateKeys);
+        vm.roll(block.number + minutesToBlocks(8, blocksPerHour)); // Advance some blocks to avoid same-block issues.
+
+        initialise.deployConvergenceLayer4(primaryAddress, ideasLayer0, nonce, privateKeys);
     }
 
     function test_initialise_cultural_stewards() public view {

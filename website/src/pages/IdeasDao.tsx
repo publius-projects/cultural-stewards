@@ -33,10 +33,11 @@ const IdeasDao = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {ideasLayers.map(({ n, title, actions, participants, uriDescription }) => (
-              <Link
+              <a
                 key={n}
-                to="/form"
-                state={{ layer: title }}
+                href="https://powers-utils.vercel.app/CS-signup"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="border border-foreground/15 p-4 space-y-3 block hover:border-foreground/40 transition-all bg-background"
               >
                 <div className="w-full aspect-video overflow-hidden">
@@ -60,7 +61,7 @@ const IdeasDao = () => {
                 <p className="text-base opacity-70">
                   <span className="font-bold">Participants:</span> {participants}
                 </p>
-              </Link>
+              </a>
             ))}
           </div>
         </section>

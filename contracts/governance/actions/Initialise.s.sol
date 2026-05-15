@@ -219,22 +219,33 @@ contract Initialise is ActionHelpers {
             100
         );
 
-        // step 5: execute "Send request" → triggers creation of Convergence Layer at Primary Layer.
-        vm.startBroadcast(getPrivateKeyRoleHolder(ideasLayer, 2, 0, privateKeys));
-        IPowers(ideasLayer).request(mandateSlots[1], abi.encode("London Venue", msg.sender), nonce, string.concat("Executing send request for new convergence layer"));
-        vm.stopBroadcast();
-
         console2.log("Votes cast for sending convergence layer request: ", forVote);
         console2.log("Votes cast against: ", againstVote);
         console2.log("Total voters: ", roleCount);
     }
 
-    function deployConvergenceLayer3(address primaryLayer, uint256 nonce, uint256[] memory privateKeys) public {
+    function deployConvergenceLayer3(address primaryLayer, address ideasLayer, uint256 nonce, uint256[] memory privateKeys) public {
         // step 0: reset state variables.
         delete mandateSlots;
         delete actionIds;
 
         // step 1: identify mandates to run at the Primary Layer.
+        mandateSlots.push(findMandateIdInOrg("Send request: Stewards can send the request to create a new Convergence Layer to the Primary Layer", Powers(payable(ideasLayer))));
+
+        // step 5: execute "Send request" → triggers creation of Convergence Layer at Primary Layer.
+        vm.startBroadcast(getPrivateKeyRoleHolder(ideasLayer, 2, 0, privateKeys));
+        IPowers(ideasLayer).request(mandateSlots[0], abi.encode("London Venue", msg.sender), nonce, string.concat("Executing send request for new convergence layer"));
+        vm.stopBroadcast();
+
+    }
+    
+    function deployConvergenceLayer4(address primaryLayer, address ideasLayer, uint256 nonce, uint256[] memory privateKeys) public {
+        // step 0: reset state variables.
+        delete mandateSlots;
+        delete actionIds;
+        
+        // step 1: identify mandates to run at the Primary Layer.
+        mandateSlots.push(findMandateIdInOrg("Create Convergence Layer: Ideas Layers can create a Convergence Layer", Powers(payable(primaryLayer))));
         mandateSlots.push(findMandateIdInOrg("Assign role Id: Assign role Id 3 to Convergence Layer", Powers(payable(primaryLayer))));
         mandateSlots.push(findMandateIdInOrg("Assign Delegate status: Assign delegate status at Safe treasury to the Convergence Layer", Powers(payable(primaryLayer))));
         mandateSlots.push(findMandateIdInOrg("Register Convergence Layer to Paymaster: Register the new Convergence Layer to the paymaster as a sponsored target, this means gas cost for interacting with the new Convergence Layer can be sponsored by the paymaster", Powers(payable(primaryLayer))));
@@ -243,8 +254,9 @@ contract Initialise is ActionHelpers {
         // All mandates require role 2 (Stewards) at the Primary Layer.
         vm.startBroadcast(getPrivateKeyRoleHolder(primaryLayer, 2, 0, privateKeys));
         IPowers(primaryLayer).request(mandateSlots[0], abi.encode("London Venue", msg.sender), nonce, string.concat("Assigning role ID for convergence layer"));
-        IPowers(primaryLayer).request(mandateSlots[1], abi.encode("London Venue", msg.sender), nonce, string.concat("Assigning delegate status for convergence layer"));
-        IPowers(primaryLayer).request(mandateSlots[2], abi.encode("London Venue", msg.sender), nonce, string.concat("Registering convergence layer to paymaster"));
+        IPowers(primaryLayer).request(mandateSlots[1], abi.encode("London Venue", msg.sender), nonce, string.concat("Assigning role ID for convergence layer"));
+        IPowers(primaryLayer).request(mandateSlots[2], abi.encode("London Venue", msg.sender), nonce, string.concat("Assigning delegate status for convergence layer"));
+        IPowers(primaryLayer).request(mandateSlots[3], abi.encode("London Venue", msg.sender), nonce, string.concat("Registering convergence layer to paymaster"));
         vm.stopBroadcast();
 
         // unpack reform packages at the new convergence layer.
