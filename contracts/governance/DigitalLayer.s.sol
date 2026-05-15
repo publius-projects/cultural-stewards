@@ -106,8 +106,8 @@ contract DigitalLayer is DeploySetup {
         calldatas[3] = abi.encodeWithSelector(IPowers.labelRole.selector, 2, "Maintain", "");   
         calldatas[4] = abi.encodeWithSelector(IPowers.labelRole.selector, 6, "Primary Layer", ""); 
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 7, "Convergence Layer", "");
-        calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
-        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
+        calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount1);
+        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, testAccount1);
         calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, hannah);
         calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, hannah);
         calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer);

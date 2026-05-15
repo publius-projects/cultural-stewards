@@ -28,8 +28,7 @@ contract ConvergenceLayer is DeploySetup {
         console2.log("Deploying Convergence Layer factory (contract only)...");
         vm.startBroadcast();
         PowersDeployer ConvergenceLayerDeployer = new PowersDeployer();  // £todo: I think this can be deployed as a singleton contract
-        powersFactory = new PowersFactory(
-            "Convergence Layer", // name
+        powersFactory = new PowersFactory( 
             string.concat(baseURI, "physicalLayer.json"), // uri
             helperConfig.getMaxCallDataLength(block.chainid), // max call data length
             helperConfig.getMaxReturnDataLength(block.chainid), // max return data length
@@ -53,7 +52,7 @@ contract ConvergenceLayer is DeploySetup {
     ) public {
         _createConstitution(primaryLayer, governed721, activityToken, nominees, mintPoapTokenId, requestAllowanceConvergenceLayerId);
         
-        PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE, 1);
+        PowersTypes.MandateInitData[] memory constitutionPacked = packageInitData(constitution, PACKAGE_SIZE);
         vm.startBroadcast();
         powersFactory.addMandates(constitutionPacked);
         powersFactory.addFlows(flows);
@@ -92,9 +91,9 @@ contract ConvergenceLayer is DeploySetup {
         calldatas[3] = abi.encodeWithSelector(IPowers.labelRole.selector, 2, "Steward", ""); 
         calldatas[4] = abi.encodeWithSelector(IPowers.labelRole.selector, 3, "Legal Interfacer", "");
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 6, "Primary Layer", "");
-        calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
-        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, cedars);
-        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, cedars);
+        calldatas[6] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount1);
+        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, testAccount1);
+        calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 3, testAccount1);
         calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 6, primaryLayer); 
         // £todo: treasury as itself. 
         calldatas[10] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate 1 after use. 

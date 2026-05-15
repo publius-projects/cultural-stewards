@@ -151,17 +151,17 @@ contract PrimaryLayer is DeploySetup {
             uint8(1) // v = 1 This is a type 1 call. See Safe.sol for details.
         );
 
-        targets = new address[](19);
-        values = new uint256[](19);
-        calldatas = new bytes[](19);
+        targets = new address[](18);
+        values = new uint256[](18);
+        calldatas = new bytes[](18);
 
-        for (i = 0; i < 19; i++) {
+        for (i = 0; i < 18; i++) {
             targets[i] = address(powers); // all calls have value 0 in this mandate. To transfer Eth, use a different mandate.
         }
-        targets[14] = treasury; // override target for treasury setup call.
-        targets[15] = treasury; // override target for allowance module setup call.
+        targets[13] = treasury; // override target for treasury setup call.
+        targets[14] = treasury; // override target for allowance module setup call.
+        targets[15] = paymaster; // override target for paymaster sponsored target setup call.
         targets[16] = paymaster; // override target for paymaster sponsored target setup call.
-        targets[17] = paymaster; // override target for paymaster sponsored target setup call.
 
         calldatas[0] = abi.encodeWithSelector(IPowers.labelRole.selector, 0, "Setup Initiators", "");  
         calldatas[1] = abi.encodeWithSelector(IPowers.labelRole.selector, type(uint256).max, "Public", ""); 
@@ -170,14 +170,13 @@ contract PrimaryLayer is DeploySetup {
         calldatas[4] = abi.encodeWithSelector(IPowers.labelRole.selector, 3, "Convergence Layers", "");
         calldatas[5] = abi.encodeWithSelector(IPowers.labelRole.selector, 4, "Ideas Layers", "");
         calldatas[6] = abi.encodeWithSelector(IPowers.labelRole.selector, 5, "Digital Layers", "");
-        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, cedars);
+        calldatas[7] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount1);
         calldatas[8] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount1);
-        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 1, testAccount2); 
-        calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, testAccount1);
-        calldatas[11] = abi.encodeWithSelector(IPowers.assignRole.selector, 5, digitalLayer);
-        calldatas[12] = abi.encodeWithSelector(IPowers.setTreasury.selector, treasury);
-        calldatas[13] = abi.encodeWithSelector(IPowers.setPaymaster.selector, paymaster);
-        calldatas[14] = abi.encodeWithSelector( // cal to set allowance module to the Safe treasury.
+        calldatas[9] = abi.encodeWithSelector(IPowers.assignRole.selector, 2, testAccount1);
+        calldatas[10] = abi.encodeWithSelector(IPowers.assignRole.selector, 5, digitalLayer);
+        calldatas[11] = abi.encodeWithSelector(IPowers.setTreasury.selector, treasury);
+        calldatas[12] = abi.encodeWithSelector(IPowers.setPaymaster.selector, paymaster);
+        calldatas[13] = abi.encodeWithSelector( // cal to set allowance module to the Safe treasury.
             Safe.execTransaction.selector,
             treasury, // The internal transaction's destination
             0, // The internal transaction's value in this mandate is always 0. To transfer Eth use a different mandate.
@@ -193,7 +192,7 @@ contract PrimaryLayer is DeploySetup {
             address(0), // refundReceiver
             signature // the signature constructed above
         );
-        calldatas[15] = abi.encodeWithSelector( // call to set Digital Layer as delegate to the Safe treasury.
+        calldatas[14] = abi.encodeWithSelector( // call to set Digital Layer as delegate to the Safe treasury.
             Safe.execTransaction.selector,
             helperConfig.getSafeAllowanceModule(block.chainid), // The internal transaction's destination: the Allowance Module.
             0, // The internal transaction's value in this mandate is always 0. To transfer Eth use a different mandate.
@@ -210,9 +209,9 @@ contract PrimaryLayer is DeploySetup {
             signature // the signature constructed above
         );
         // addSponsoredTarget 
-        calldatas[16] = abi.encodeWithSignature("addSponsoredTarget(address)", address(powers));  
-        calldatas[17] = abi.encodeWithSignature("addSponsoredTarget(address)", digitalLayer);
-        calldatas[18] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate after use.
+        calldatas[15] = abi.encodeWithSignature("addSponsoredTarget(address)", address(powers));  
+        calldatas[16] = abi.encodeWithSignature("addSponsoredTarget(address)", digitalLayer);
+        calldatas[17] = abi.encodeWithSelector(IPowers.revokeMandate.selector, mandateCount + 1); // revoke mandate after use.
 
         mandateCount++;
         conditions.allowedRole = type(uint256).max; // = public.
@@ -261,7 +260,9 @@ contract PrimaryLayer is DeploySetup {
             PowersTypes.MandateInitData({
                 nameDescription: "Initiate Ideas Layer: Initiate creation of Ideas Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "StatementOfIntent"),
-                config: abi.encode(inputParams),
+                config: abi.encode(
+                    inputParams
+                    ),
                 conditions: conditions
             })
         );
@@ -281,7 +282,7 @@ contract PrimaryLayer is DeploySetup {
                 config: abi.encode(
                     address(ideasLayerFactory), // calling the ideas factory
                     bytes4(keccak256("createPowers(string)")),
-                    abi.encode(inputParams)  
+                    inputParams  
                 ),
                 conditions: conditions
             })
@@ -300,7 +301,7 @@ contract PrimaryLayer is DeploySetup {
                     address(powers), // target contract
                     IPowers.assignRole.selector, // function selector to call
                     abi.encode(4), // params before (role id 4 = Ideas Layers)
-                    abi.encode(inputParams), // dynamic params (the input params of the parent mandate)
+                    inputParams, // dynamic params (the input params of the parent mandate)
                     mandateCount - 1, // parent mandate id (the create Ideas Layer mandate)
                     abi.encode() // no params after
                 ),
@@ -321,7 +322,7 @@ contract PrimaryLayer is DeploySetup {
                     paymaster, // target contract
                     bytes4(keccak256("addSponsoredTarget(address)")), // function selector to call
                     abi.encode(), // params before (role id 4 = Ideas Layers)
-                    abi.encode(inputParams), // dynamic params (the input params of the parent mandate)
+                    inputParams, // dynamic params (the input params of the parent mandate)
                     mandateCount - 2, // parent mandate id (the create Ideas Layer mandate)
                     abi.encode() // no params after
                 ),
@@ -431,26 +432,26 @@ contract PrimaryLayer is DeploySetup {
             })
         );
         delete conditions;
-        requestNewConvergenceLayerId = mandateCount; // needed for call from ideas layer
 
         // Ideas Layer: Create Convergence Layer
-        mandateCount++; 
+        mandateCount++;
         conditions.allowedRole = 4; // = (a single) Ideas Layer
-        conditions.timelock = minutesToBlocks(7, helperConfig.getBlocksPerHour(block.chainid)); // = 7 minutes / days. Note: timelock allows for veto to be cast. 
+        conditions.timelock = minutesToBlocks(7, helperConfig.getBlocksPerHour(block.chainid)); // = 7 minutes / days. Note: timelock allows for veto to be cast.
         conditions.needNotFulfilled = mandateCount - 1; // need the previous mandate NOT to be fulfilled.
         constitution.push(
             PowersTypes.MandateInitData({
                 nameDescription: "Create Convergence Layer: Ideas Layers can create a Convergence Layer",
                 targetMandate: registry.getMandateAddress(MAJOR, MINOR, PATCH, "BespokeAction_Simple"),
                 config: abi.encode(
-                    address(convergenceLayerFactory), // calling the Convergence factory 
+                    address(convergenceLayerFactory), // calling the Convergence factory
                     bytes4(keccak256("createPowers(string,address)")), // function selector for createPowers (because the contracts are compiled with different solidity versions we cannot reference the contract directly here)
-                    inputParams // address as input param 
+                    inputParams // address as input param
                 ),
                 conditions: conditions
             })
         );
         delete conditions;
+        requestNewConvergenceLayerId = mandateCount; // role 4 (Ideas Layer) calls this mandate via ExternalAction_Simple
 
         // Primary Steward: Assign role Id to Convergence Layer //
         mandateCount++;
